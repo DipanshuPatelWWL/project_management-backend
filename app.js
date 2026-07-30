@@ -7,6 +7,8 @@ const cookieParser = require("cookie-parser");
 
 const app = express();
 
+const authRoute= require("./routes/authRoutes")
+
 
 app.use(
     cors({
@@ -26,6 +28,7 @@ app.use(cookieParser());
 // =======================
 // API Routes
 // =======================
+app.use("/app/auth",authRoute);
 
 app.get("/", (req, res) => {
     res.status(200).json({
@@ -33,7 +36,7 @@ app.get("/", (req, res) => {
         message: "Project Management System API Running",
     });
 });
-
+ 
 
 app.use((req, res) => {
     res.status(404).json({
@@ -41,5 +44,7 @@ app.use((req, res) => {
         message: "API Route Not Found",
     });
 });
+
+
 
 module.exports = app;

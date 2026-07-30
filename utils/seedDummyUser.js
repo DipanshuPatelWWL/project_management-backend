@@ -1,15 +1,7 @@
-const http = require("http");
-const app = require("./app");
-const connectDB = require("./config/db");
 const bcrypt = require("bcryptjs");
-const User = require("./models/User");
-require("dotenv").config();
+const User = require("../models/User");
 
-const server = http.createServer(app);
-
-const PORT = process.env.PORT || 4000;
-
-// dummy user create karta hai testing ke liye, sirf agar already exist nahi karta
+// ek dummy user create karta hai, sirf agar already exist nahi karta
 const seedDummyUser = async () => {
   try {
     const existingUser = await User.findOne({ email: "amit@test.com" });
@@ -37,13 +29,4 @@ const seedDummyUser = async () => {
   }
 };
 
-const startServer = async () => {
-  await connectDB();
-  await seedDummyUser();
-
-  server.listen(PORT, () => {
-    console.log(`Server running on Port : ${PORT}`);
-  });
-};
-
-startServer();
+module.exports = seedDummyUser;

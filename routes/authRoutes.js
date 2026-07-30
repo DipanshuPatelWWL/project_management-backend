@@ -2,16 +2,20 @@ const express = require("express");
 const router = express.Router();
 
 const {
-  auth,
   login,
   getMe,
   changePassword,
   logout,
-} = require("../middleware/authMiddleware");
+} = require("../controllers/authController");
 
+const { protect } = require("../middleware/authMiddleware");
+
+// Public Routes
 router.post("/login", login);
-router.get("/me", auth, getMe);
-router.put("/change-password", auth, changePassword);
-router.post("/logout", logout);
+
+// Protected Routes
+router.get("/me", protect, getMe);
+router.put("/change-password", protect, changePassword);
+router.post("/logout", protect, logout);
 
 module.exports = router;

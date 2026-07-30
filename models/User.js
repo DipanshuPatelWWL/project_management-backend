@@ -61,7 +61,7 @@ const userSchema = new mongoose.Schema(
         },
 
         company: {
-            type: moongose.Schema.Types.ObjectId,
+            type: mongoose.Schema.Types.ObjectId,
             ref : "Company",
             
         },

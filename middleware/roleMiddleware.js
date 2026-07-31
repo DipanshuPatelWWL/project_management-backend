@@ -1,4 +1,8 @@
 exports.authorize = (...roles) => {
+    if (!roles.length) {
+        throw new Error("No roles provided to authorize middleware.");
+    }
+
     return (req, res, next) => {
         try {
             if (!req.user) {
@@ -10,7 +14,7 @@ exports.authorize = (...roles) => {
             if (!roles.includes(req.user.role)) {
                 return res.status(403).json({
                     success: false,
-                    message: "You are not authorized to perform this action.",
+                    message: `Access denied. Required role(s): ${roles.join(", ")}`,
                 });
             }
 

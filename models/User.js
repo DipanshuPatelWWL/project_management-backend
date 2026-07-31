@@ -23,7 +23,7 @@ const userSchema = new mongoose.Schema(
 
         profileImage: {
             type: String,
-            default: "",
+            default: null,
         },
 
         email: {
@@ -34,38 +34,45 @@ const userSchema = new mongoose.Schema(
             trim: true,
         },
 
-        phoneNumber: {
+        isEmailVerified: {
+            type: Boolean,
+            default: false,
+        },
+
+        phone: {
             type: String,
+            required: true,
             trim: true,
+            unique: true,
         },
 
         password: {
             type: String,
             required: true,
+            select: false,
         },
 
         role: {
             type: String,
             enum: [
-                "Super Admin",
+                "SuperAdmin",
                 "Admin",
-                "Project Manager",
-                "Team Lead",
+                "ProjectManager",
+                "TeamLead",
                 "Developer",
-                "QA Engineer",
+                "QA",
                 "Client",
             ],
-            default : "Developer",
+            default: "Developer",
             required: true,
 
         },
 
         company: {
             type: mongoose.Schema.Types.ObjectId,
-            ref : "Company",
-            
+            ref: "Company",
+            default: null,
         },
-                
 
 
         department: {
@@ -79,8 +86,9 @@ const userSchema = new mongoose.Schema(
         },
 
         reportingManager: {
-            type: String,
-            trim: true,
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
         },
 
         joiningDate: {
@@ -100,7 +108,11 @@ const userSchema = new mongoose.Schema(
 
         status: {
             type: String,
-            enum: ["Active", "Inactive", "On Leave"],
+            enum: [
+                "Active",
+                "Inactive",
+                "OnLeave",
+            ],
             default: "Active",
         },
 
@@ -109,11 +121,30 @@ const userSchema = new mongoose.Schema(
         },
 
         createdBy: {
-            type: String,
-            trim: true,
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+        },
+        updatedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+        },
+        isDeleted: {
+            type: Boolean,
+            default: false,
         },
     },
-    { timestamps: true }
+    {
+        timestamps: true,
+        toJSON: { virtuals: true },
+        toObject: { virtuals: true },
+    }
 );
-  
-module.exports = mongoose.model("User", userSchema); 
+
+userSchema.index({ company: 1 });
+userSchema.index({ role: 1 });
+
+userSchema.virtual("fullName").get(function () {
+    return `${this.firstName} ${this.lastName}`;
+});
+
+module.exports = mongoose.model("User", userSchema);

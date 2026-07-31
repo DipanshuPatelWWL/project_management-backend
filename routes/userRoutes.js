@@ -1,5 +1,4 @@
 const express = require("express");
-
 const router = express.Router();
 
 const {
@@ -14,23 +13,72 @@ const {
     changeUserRole,
 } = require("../controllers/userController");
 
-router.post("/create-user",  createUser);
+const { protect } = require("../middleware/authMiddleware");
+const { authorize } = require("../middleware/roleMiddleware");
 
+// User Management (SuperAdmin / Admin)
 
-router.get("/users",  getUsers);
+// Create User
+router.post(
+    "/",
+    protect,
+    authorize("SuperAdmin", "Admin"),
+    createUser
+);
 
+// Get All Users
+router.get(
+    "/",
+    protect,
+    authorize("SuperAdmin", "Admin"),
+    getUsers
+);
 
-router.get("/users/:userId",  getUserById);
+// Get User By ID
+router.get(
+    "/:userId",
+    protect,
+    authorize("SuperAdmin", "Admin"),
+    getUserById
+);
 
+// Update User
+router.put(
+    "/:userId",
+    protect,
+    authorize("SuperAdmin", "Admin"),
+    updateUser
+);
 
-router.put("/users/:userId",  updateUser);
+// Change User Status
+router.patch(
+    "/:userId/status",
+    protect,
+    authorize("SuperAdmin", "Admin"),
+    changeUserStatus
+);
 
-router.put("/users/:userId/status" ,changeUserStatus);
+// Change User Role
+router.patch(
+    "/:userId/role",
+    protect,
+    authorize("SuperAdmin"),
+    changeUserRole
+);
 
-router.put("/users/usersId,role",changeUserRole);
+// Delete User (Soft Delete)
+router.delete(
+    "/:userId",
+    protect,
+    authorize("SuperAdmin"),
+    deleteUser
+);
 
-router.delete("/users/:userId",  deleteUser);
-
-router.put("/profile" ,updateProfile);
+// Update Own Profile
+router.put(
+    "/profile",
+    protect,
+    updateProfile
+);
 
 module.exports = router;

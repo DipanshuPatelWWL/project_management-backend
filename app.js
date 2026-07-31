@@ -7,8 +7,8 @@ const cookieParser = require("cookie-parser");
 
 const app = express();
 
-const authRoute= require("./routes/authRoutes");
-const userRoute = require ("./routes/userRoutes");
+const authRoute = require("./routes/authRoutes");
+const userRoute = require("./routes/userRoutes");
 
 app.use(
     cors({
@@ -28,9 +28,9 @@ app.use(cookieParser());
 // =======================
 // API Routes
 // =======================
-app.use("/app/auth",authRoute);
+app.use("/api/auth", authRoute);
 
-app.use("app/user" ,userRoute);
+app.use("api/users", userRoute);
 
 app.get("/", (req, res) => {
     res.status(200).json({
@@ -38,7 +38,7 @@ app.get("/", (req, res) => {
         message: "Project Management System API Running",
     });
 });
- 
+
 
 app.use((req, res) => {
     res.status(404).json({

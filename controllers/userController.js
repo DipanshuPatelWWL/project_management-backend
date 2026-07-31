@@ -5,10 +5,10 @@ const User = require("../models/User");
 // Create User
 exports.createUser = async (req, res) => {
     try {
-        const {employeeId,firstName,lastName,email,phone,password,role,company,designation,department, status,} = req.body;
+        const { employeeId, firstName, lastName, email, phone, password, role, company, designation, department, status, } = req.body;
 
-        
-        if ( !employeeId ||!firstName || !lastName || !email ||!phone || !password ||!role ||!company ||!designation ||!department) {
+
+        if (!employeeId || !firstName || !lastName || !email || !phone || !password || !role || !company || !designation || !department) {
             return res.status(400).json({
                 success: false,
                 message: "Please fill all required fields",
@@ -18,12 +18,17 @@ exports.createUser = async (req, res) => {
         // Check if employee ID already exists
         const existingEmployee = await User.findOne({ employeeId });
         if (existingEmployee) {
-            return res.status(400).json({success: false,  message: "Employee already exists",
+            return res.status(400).json({
+                success: false, message: "Employee already exists",
             });
         }
 
         // Check if email already exists
-        const existingEmail = await User.findOne({ email: email });
+        const normalizedEmail = email.trim().toLowerCase();
+
+        const existingEmail = await User.findOne({
+            email: normalizedEmail,
+        });
 
         if (existingEmail) {
             return res.status(400).json({
@@ -50,20 +55,27 @@ exports.createUser = async (req, res) => {
             employeeId,
             firstName,
             lastName,
-            email: email,
+            email: normalizedEmail,
             phone,
             password: hashedPassword,
             role,
             company,
             designation,
             department,
-            status: status ,
+            status: status || "Active",
+            reportingManager,
+            joiningDate,
+            employmentType,
+            workLocation,
+            createdBy: req.user._id,
+            updatedBy: req.user._id,
         });
 
         // password wapis nahi bhejna 
         const createdUser = await User.findById(user._id).select("-password");
 
-        return res.status(201).json({success: true, message: "User created successfully",
+        return res.status(201).json({
+            success: true, message: "User created successfully",
             user: createdUser,
         });
     } catch (error) {
@@ -82,30 +94,41 @@ exports.createUser = async (req, res) => {
 // Get All Users
 exports.getUsers = async (req, res) => {
     try {
-        const users = await User.find().select("-password");
-         
-        return res.status(200).json({ success: true, message: "Users fetched successfully",
-             });
+        const users = await User.find({
+            isDeleted: false,
+        }).select("-password");
+
+        return res.status(200).json({
+            success: true,
+            count: users.length,
+            users,
+        });
+
     } catch (error) {
-        return res.status(500).json({ success: false, message: "Failed to fetch users",
+        return res.status(500).json({
+            success: false, message: "Failed to fetch users",
         });
     }
 };
 
 // get user by  Id 
-exports.getUserById = async (req,res ) => {
+exports.getUserById = async (req, res) => {
     try {
-        const users = await User.findById(req.param.id).select("-password");
-      if (!user )
-        return res.status(400).json({success:false , message:"user do not exists"  ,}
-    );
-    return res.status (200) .json ({success: true , message : "user exists "}
-
-    );
+        const user = await User.findOne({
+            _id: req.params.userId,
+            isDeleted: false,
+        }).select("-password");
+        if (!user)
+            return res.status(400).json({ success: false, message: "user do not exists", }
+            );
+        return res.status(200).json({
+            success: true,
+            user,
+        });
 
     }
-    catch(error) {
-        return res.status(400). json ({success: false  , message : error.message}
+    catch (error) {
+        return res.status(400).json({ success: false, message: error.message }
 
         );
 
@@ -129,9 +152,16 @@ exports.updateUser = async (req, res) => {
             designation,
             department,
             status,
+            reportingManager,
+            joiningDate,
+            employmentType,
+            workLocation,
         } = req.body;
 
-        const user = await User.findById(req.params.id);
+        const user = await User.findOne({
+            _id: req.params.userId,
+            isDeleted: false,
+        });
 
         if (!user) {
             return res.status(404).json({
@@ -144,7 +174,7 @@ exports.updateUser = async (req, res) => {
         if (employeeId) {
             const existingEmployee = await User.findOne({
                 employeeId,
-                _id: { $ne: req.params.id },
+                _id: { $ne: req.params.userId },
             });
 
             if (existingEmployee) {
@@ -171,7 +201,7 @@ exports.updateUser = async (req, res) => {
                 });
             }
 
-            user.email = email.toLowerCase();
+            user.email = email.trim().toLowerCase();
         }
 
         // Check phone
@@ -205,6 +235,8 @@ exports.updateUser = async (req, res) => {
             user.password = await bcrypt.hash(password, 10);
         }
 
+        user.updatedBy = req.user._id;
+
         await user.save();
 
         user.password = undefined;
@@ -225,23 +257,29 @@ exports.updateUser = async (req, res) => {
 };
 
 
-exports.deleteUser = async(req,res) => {
+exports.deleteUser = async (req, res) => {
 
     try {
-        const user = await user.findById(req.param.id) ;
+        const user = await User.findOne({
+            _id: req.params.userId,
+            isDeleted: false,
+        });
 
-        if (!user ){
-           return  res.status(400) . json({success :false, message: "no user found" });
+        if (!user) {
+            return res.status(400).json({ success: false, message: "no user found" });
 
         }
 
-        await user.deleteOne();
-        
-        return res.status(200) .json ({success : true ,message :"user deleted "});
+        user.isDeleted = true;
+        user.updatedBy = req.user._id;
+
+        await user.save();
+
+        return res.status(200).json({ success: true, message: "User deleted successfully" });
     }
     catch (error) {
 
-        return res.status(401) .json ({success : false , message : error.message});
+        return res.status(401).json({ success: false, message: error.message });
 
     }
 
@@ -305,7 +343,7 @@ exports.updateProfile = async (req, res) => {
             user.phone = phone;
         }
 
-        if (firstName)user.firstName = firstName;
+        if (firstName) user.firstName = firstName;
         if (lastName) user.lastName = lastName;
         if (company) user.company = company;
         if (designation) user.designation = designation;
@@ -315,6 +353,8 @@ exports.updateProfile = async (req, res) => {
         if (password) {
             user.password = await bcrypt.hash(password, 10);
         }
+
+        user.updatedBy = req.user._id;
 
         await user.save();
 
@@ -337,53 +377,65 @@ exports.updateProfile = async (req, res) => {
 
 //userStatus
 exports.changeUserStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
+    try {
+        const { userId } = req.params;
+        const { status } = req.body;
 
-    const user = await User.findById(id);
+        const user = await User.findOne({
+            _id: userId,
+            isDeleted: false,
+        });
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        user.status = status;
+        user.updatedBy = req.user._id;
+
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Status updated",
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Something went wrong",
+        });
     }
-
-    user.status = status;
-    await user.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Status updated",
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Something went wrong",
-    });
-  }
 };
 //userRole
 
 exports.changeUserRole = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { role } = req.body;
+    try {
+        const { userId } = req.params;
+        const { role } = req.body;
 
-    const user = await User.findById(id);
+        const user = await User.findOne({
+            _id: userId,
+            isDeleted: false,
+        });
 
-    if (!user) {
-      return res.status(400).json({success: false,
-        message: "User not found",
-      });
+        if (!user) {
+            return res.status(400).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        user.role = role;
+        user.updatedBy = req.user._id;
+
+        await user.save();
+
+        res.status(200).json({ success: true, message: "Role updated", });
     }
-
-    user.role = role;
-    await user.save();
-
-    res.status(200).json({ success: true, message: "Role updated",});
-  } 
-  catch (error) {res.status(500).json({ success: false, message: "Something went wrong", });
-  }
+    catch (error) {
+        res.status(500).json({ success: false, message: "Something went wrong", });
+    }
 };

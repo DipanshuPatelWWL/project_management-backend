@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const ClientSchema = newMongooseSchema (
+const ClientSchema = new mongoose.Schema (
     {
 
         ClientName: {
@@ -59,6 +59,6 @@ const ClientSchema = newMongooseSchema (
         
     },
 
-    {timeStamp :true}   
+    {timeStamps :true}   
 );
-module.exports = moongoose.model("Client",ClientSchema);
+module.exports = mongoose.models.Client || mongoose.model("Client", ClientSchema);

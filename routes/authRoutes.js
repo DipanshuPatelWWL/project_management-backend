@@ -19,3 +19,4 @@ router.put("/change-password", protect, changePassword);
 router.post("/logout", protect, logout);
 
 module.exports = router;
+

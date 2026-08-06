@@ -1,23 +1,23 @@
-const mongoose = require ("moongoose ");
+const mongoose = require("mongoose");
 const Company = require("./Company");
 
-const ProjectSchema = new moongoseSchema(
+const ProjectSchema = new mongoose.Schema(
 
     {
       projectName : {
-            type :string,
+            type :String,
             trim : true,
 
         },
          
         projectCode : {
-            type : string,
+            type : String,
             trim : true,
         },
 
 
          description : {
-            type : string,
+            type : String,
             trim : true,
 
         },
@@ -62,7 +62,7 @@ const ProjectSchema = new moongoseSchema(
          },
 
          technologies : {
-            type :string,
+            type :String,
             trim :true ,
 
          },
@@ -84,14 +84,14 @@ const ProjectSchema = new moongoseSchema(
          },
 
          status :{
-            type : string,
+            type : String,
             enum :["planning","active","on hold","completed","Cancelled"],
             default : "planning",
 
          },
 
          priority :{
-            type :string,
+            type :String,
             enum :["low","high","critical","medium"],
             default : "medium",
 
@@ -106,7 +106,7 @@ const ProjectSchema = new moongoseSchema(
 
          },
            isAchived : {
-            type : boolean,
+            type : Boolean,
             trim : false,
 
     },
@@ -131,7 +131,7 @@ const ProjectSchema = new moongoseSchema(
             
 
     },
- {timeStamp : true}
+ {timeStamps : true}
 
 );
-module.export =  mongoose.model("Project",ProjectSchema)
+module.exports =  mongoose.model("Project",ProjectSchema)

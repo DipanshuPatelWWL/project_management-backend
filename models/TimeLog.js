@@ -39,7 +39,8 @@ const timeLogSchema = new mongoose.Schema({
         trim : true,
     },
 },
-{timeStamp : true} );
+{timestamps : true} );
 
-module.exports = mongoose.model("TimeLog", timeLogSchema);
-    
+module.exports =
+    mongoose.models.TimeLog ||
+    mongoose.model("TimeLog", timeLogSchema);    

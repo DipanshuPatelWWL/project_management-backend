@@ -74,7 +74,9 @@ const MeetingSchema = new mongoose.Schema(
 
     },
 
-    {timeStamp : true}
+    {timestamps : true}
 
     );
-    module.export = moongoose.model("Meeting",MeetingSchema);
+module.exports =
+    mongoose.models.Meeting ||
+    mongoose.model("Meeting", MeetingSchema);

@@ -1,60 +1,60 @@
-const mongoose = require ('mongoose ');
+const mongoose = require('mongoose');
 
-const DocumentModel = new mongoose.Schema({
+const DocumentSchema = new mongoose.Schema({
 
     documentName : {
         type : String,
         required : true,
     },
+
     project : {
         type : mongoose.Schema.Types.ObjectId,
         ref : "Project",
         trim : true,
     },
-     category : {
+
+    category : {
         type : String,
         trim : true,
     },
 
-     fileUrl : {
+    fileUrl : {
         type : String,
         trim : true,
     },
-     fileType : {
+
+    fileType : {
         type : String,
         trim : true,
-     },
-     fileSize : {
+    },
 
-        type : String,
-        trim : true,    
-     },
-
-     version : {
+    fileSize : {
         type : String,
         trim : true,
-     },
-        uploadedBy : {
-        type : mongoose.Schema.Types.ObjectId,
-        ref : "User",
-        trim : true,    
+    },
 
-        },
-
-     createdBy : {
-        type : mongoose.Schema.Types.ObjectId,
-        ref : "User",
+    version : {
+        type : String,
         trim : true,
-     },
+    },
 
-     updatedBy : {
+    uploadedBy : {
         type : mongoose.Schema.Types.ObjectId,
         ref : "User",
-        trim : true,
-     }, 
-      
+    },
 
-    
-}, {timestamps : true});
+    createdBy : {
+        type : mongoose.Schema.Types.ObjectId,
+        ref : "User",
+    },
 
-module.exports = mongoose.model("Document", documentModel);
+    updatedBy : {
+        type : mongoose.Schema.Types.ObjectId,
+        ref : "User",
+    },
+
+}, { timestamps : true });
+
+module.exports =
+    mongoose.models.Document ||
+    mongoose.model("Document", DocumentSchema);

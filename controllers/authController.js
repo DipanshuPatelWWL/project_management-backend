@@ -29,7 +29,7 @@ exports.auth = async (req, res, next) => {
             const decode = jwt.verify(token, process.env.JWT_SECRET);
             console.log(decode);
 
-            const user = await User.findById(decode.id).select("-password");
+            const user = await User.findById(decode.Id).select("-password");
 
             if (!user) {
                 return res.status(401).json({

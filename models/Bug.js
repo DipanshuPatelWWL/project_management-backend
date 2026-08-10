@@ -15,7 +15,7 @@ const BugSchema = new mongoose.Schema(
 
         project : {
             type :mongoose.Schema.Types.ObjectId,
-            ref : "project",
+            ref : "Project",
         trim: true,
         },
 
@@ -89,4 +89,4 @@ const BugSchema = new mongoose.Schema(
     {timestamps : true}
 );
 
-module.exports = mongoose.model("Bug", bugSchema);
+module.exports = mongoose.model("Bug", BugSchema);

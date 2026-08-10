@@ -3,11 +3,11 @@ const mongoose = require("mongoose");
 const SprintSchema = new mongoose.Schema(
     {
         sprintName : {
-            type :string,
+            type :String,
             trim : true,
         },
        sprintgoal:{
-            type : string,
+            type : String,
             trim : true,
         },
          
@@ -26,7 +26,7 @@ const SprintSchema = new mongoose.Schema(
             trim:true,
         },
         status:{
-            type :string,
+            type :String,
             enum :["active" ,"completed","cancelled","planning"],
             default:"planning",
         },
@@ -63,7 +63,7 @@ const SprintSchema = new mongoose.Schema(
 
     },
 
- {timeStamp :true}
+ {timeStamps :true}
     );
     module.exports = mongoose.model("Sprint", SprintSchema);
     

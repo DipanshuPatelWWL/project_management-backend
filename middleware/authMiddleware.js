@@ -9,7 +9,7 @@ exports.protect = async (req, res, next) => {
             token = req.cookies.token;
         }
         if (
-            !token &&
+            !token && 
             req.headers.authorization &&
             req.headers.authorization.startsWith("Bearer")
         ) {

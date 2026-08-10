@@ -4,13 +4,13 @@ const CompanySchema = new mongoose.Schema(
     {
         
         companyName : {
-            type :string,
+            type :String,
             trim : true,
 
         },
          
         companyCode : {
-            type : string,
+            type : String,
             required : true,
             unique:true,
             upperCase : true,
@@ -18,23 +18,23 @@ const CompanySchema = new mongoose.Schema(
 
 
         companyLogo : {
-            type : string,
+            type : String,
             trim : true,
 
         },
          companyType : {
-            type : string,
+            type : String,
             trim :true,
 
          },
 
          industry : {
-            type :string,
+            type :String,
             trim :true
 
          },
          officialEmail :{
-            type :string,
+            type :String,
             unique:true,
             lowercase :true,
             trim : true,
@@ -42,78 +42,77 @@ const CompanySchema = new mongoose.Schema(
          },
 
          contactNumber : {
-            type : string,
+            type : String,
             trim : true,
 
          },
 
          website :{
-            type : string,
+            type : String,
             trim :true,
 
          },
 
          adressLine1 :{
-            type :string,
+            type :String,
             trim :true,
 
          },
 
          city : {
-            type :string,
+            type :String,
             trim :true ,
 
          },
                 state : {
-            type : string,
+            type : String,
             trim :true,
 
          },
 
          country : {
-            type :string,
+            type :String,
             trim :true
 
          },
          pincode:{
-            type :string,
+            type :String,
             unique:true,
-            
             trim : true,
              
          },
 
          timeZone: {
-            type : string,
+            type : String,
             trim : true,
 
          },
 
          currency :{
-            type : string,
+            type : String,
             trim :true,
 
          },
 
          workingDays:{
-            type :string,
+            type :String,
             trim :true,
 
          },
 
          officeStartTime : {
-            type :string,
+            type :String,
             trim :true ,
 
          },
 
          officeEndTime : {
-            type :string,
+            type :String,
             trim :true
 
          },
          status:{
-            type :string,
+            type :String,
             enum :["active" ,"inactive", "on leave"],
             trim: true,
              
@@ -137,6 +136,8 @@ const CompanySchema = new mongoose.Schema(
          
 
     },
-    {timeStamp :true}
+    {timeStamps :true}
 );
-module.exports = mongoose.model("Company", CompanySchema);
+    
+
+module.exports = mongoose.models.Company || mongoose.model("Company", CompanySchema);

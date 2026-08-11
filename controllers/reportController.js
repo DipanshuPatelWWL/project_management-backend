@@ -3,17 +3,22 @@ const Task = require("../models/Task");
 const Sprint = require("../models/Sprint");
 const Bug = require("../models/Bug");
 const TimeLog = require("../models/TimeLog");
+const User = require("../models/User");
 
 exports.projectReport = async (req, res) => {
     try {
+        const projectId =
+            req.params.projectId || req.query.projectId;
 
-        // Get projectId from params or query
-        const projectId = req.params.projectId || req.query.projectId;
+        if (!projectId) {
+            return res.status(400).json({
+                success: false,
+                message: "Project ID is required",
+            });
+        }
 
-        // Find the project
         const project = await Project.findById(projectId);
 
-        // If project does not exist
         if (!project) {
             return res.status(404).json({
                 success: false,
@@ -21,217 +26,217 @@ exports.projectReport = async (req, res) => {
             });
         }
 
-        // Get project tasks
         const tasks = await Task.find({
-            project: projectId
+            project: projectId,
         });
 
-        // Get project sprints
         const sprints = await Sprint.find({
-            project: projectId
+            project: projectId,
         });
 
-        // Get project bugs
         const bugs = await Bug.find({
-            project: projectId
+            project: projectId,
         });
-      
-        // Get project time logs
+
         const timeLogs = await TimeLog.find({
-            project: projectId
+            project: projectId,
         });
-        
-        // Calculate total tasks
+
         const totalTasks = tasks.length;
 
-        // Calculate completed tasks
-      const completedTasks = await Task.countDocuments({
-        project : projectId,
-        status : "completed",  
-    });
-
-    // calculate pending tasks 
-      const pendingTasks = await Task.countDocuments({
-        project : ProjectId,
-        status : " pending " ,
-      });
-    
-      //calculate total sprints 
-      const totalSprints = await Sprint.countDocuments({
-        project: projectId
-         });
-
-     //calculate completed sprints 
-     const completedSprints = await Sprint.countDocuments({
-        project : projectId,
-        status : " pending" ,
-     });
-        
-     // calculate total bugs 
-     const totalBugs = await Bugs.countDocuments({
-        project : projectId ,
-     });
-     
-     //calculate open bugs 
-     const openBugs = await Bugs.CountDocuments({
-        project : projectId,
-         status : "open",
-    });
-    // calculate resolved bugs 
-    const resolvedBugs = await Bugs.CountDocuments({
-         project : projectId,
-         status : "resolved",
-    });
-
-        // Calculate project progress
-        const projectProgress = await Project.countDocuments({
-            progress :  {$gte : 0 , $lte : 100 }
+        const completedTasks = await Task.countDocuments({
+            project: projectId,
+            status: "completed",
         });
 
-        // calculate total logged hours 
+        const pendingTasks = await Task.countDocuments({
+            project: projectId,
+            status: "pending",
+        });
 
-        const loggedHours = await TimeLog.countDocuments({
-            project : projectId,
+        const totalSprints = sprints.length;
 
-        })
+        const completedSprints = await Sprint.countDocuments({
+            project: projectId,
+            status: "Completed",
+        });
 
-     
-        // Return Project Report
+        const totalBugs = bugs.length;
+
+        const openBugs = await Bug.countDocuments({
+            project: projectId,
+            status: "open",
+        });
+
+        const resolvedBugs = await Bug.countDocuments({
+            project: projectId,
+            status: "resolved",
+        });
+
+        const totalLoggedHours = timeLogs.reduce(
+            (total, log) =>
+                total + Number(log.hoursWorked || 0),
+            0
+        );
+
+        const projectProgress = Number(
+            project.progress || 0
+        );
+
         return res.status(200).json({
             success: true,
             message: "Project report generated successfully",
 
             report: {
                 project,
+
                 totalTasks,
                 completedTasks,
                 pendingTasks,
+
                 totalSprints,
                 completedSprints,
+
                 totalBugs,
                 openBugs,
                 resolvedBugs,
+
                 totalLoggedHours,
-                projectProgress
-            }
+
+                projectProgress,
+            },
         });
 
     } catch (error) {
-
         return res.status(500).json({
             success: false,
             message: "Failed to generate project report",
-            error: error.message
+            error: error.message,
         });
-
     }
 };
 
-exports.sprintReport = (req,res) => {
-   
+exports.sprintReport = async (req, res) => {
     try {
-         const sprintId =  req.params.id;
+        const sprintId =
+            req.params.sprintId || req.params.id;
 
-
-         // find sprint 
-
-         const sprint = await Sprint.find(sprintId);
-
-         if (!sprint ) {
-            return res.status(404) .json ({
-                success : false ,
-                message : " sprint not found" ,
-
+        if (!sprintId) {
+            return res.status(400).json({
+                success: false,
+                message: "Sprint ID is required",
             });
-         }
+        }
+        const sprint = await Sprint.findById(sprintId);
 
-         //get sprint tasks 
-       const sprintTasks = await tasks.find({
-        sprint: sprintId,
-       });
-
-       //calculate total tasks 
-       const totalTasks = sprintTasks.length;
-
-       // Calculate completed tasks
-    const completedTasks = await Task.countDocuments({
-    sprint: sprintId,
-    status: "completed"
-       });
-
-     // Calculate pending tasks
-      const pendingTasks = await Task.countDocuments({
-        sprint: sprintId,
-        status: "pending"
-       });
-
-       // calculate in progress tasks 
-     const completedTasks = await Tasks.countDocuments({
-          sprint : sprintId,
-         status  : "in-progress",
-     });
-     
-     // total story points 
-     const totalStoryPoints = sprint.totalStoryPoints || 0;
-  
-     // completed story points 
-    const completedStoryPoints = sprint.completedStoryPoints || 0;
-
-
-        // sprint progress
-       const sprintProgress =
-           totalStoryPoints > 0
-        ? (completedStoryPoints / totalStoryPoints) * 100
-        : 0;
-              
-        //total bugs 
-            const totalBugs = await Bug.countDocuments({
-          sprint: sprintId,
-     });
-         // resolved bugs 
-       const resolvedBugs = await Bug.countDocuments({
-        sprint: sprintId,
-        status: "Resolved",
-       });
-
-       return res.status(200).json({
-          success: true,
-          message: "Sprint report generated successfully",
-         report: {
-         sprint,
-         sprintTasks,
-         totalTasks,
-         completedTasks,
-         pendingTasks,
-         completedTasks,
-         totalStoryPoints,
-         completedStoryPoints,
-         sprintProgress,
-         totalBugs,
-         resolvedBugs,
-    },
-});
-      } catch (error) {
-         return res.status(500).json({
-            success: false,
-            message: "Failed to generate project report",
-            error: error.message
+        if (!sprint) {
+            return res.status(404).json({
+                success: false,
+                message: "Sprint not found",
+            });
+        }
+        const sprintTasks = await Task.find({
+            sprint: sprintId,
         });
 
-    }
+        const totalTasks = sprintTasks.length;
 
+        const completedTasks = await Task.countDocuments({
+            sprint: sprintId,
+            status: "completed",
+        });
+
+        const pendingTasks = await Task.countDocuments({
+            sprint: sprintId,
+            status: "pending",
+        });
+
+        const inProgressTasks = await Task.countDocuments({
+            sprint: sprintId,
+            status: "in-progress",
+        });
+
+        const totalStoryPoints = sprintTasks.reduce(
+            (total, task) =>
+                total + Number(task.storyPoints || 0),
+            0
+        );
+
+        const completedStoryPoints =
+            sprintTasks
+                .filter(
+                    (task) => task.status === "completed"
+                )
+                .reduce(
+                    (total, task) =>
+                        total + Number(task.storyPoints || 0),
+                    0
+                );
+        const sprintProgress =
+            totalStoryPoints > 0
+                ? Number(
+                    (
+                        (completedStoryPoints /
+                            totalStoryPoints) *
+                        100
+                    ).toFixed(2)
+                )
+                : 0;
+
+        const totalBugs = await Bug.countDocuments({
+            sprint: sprintId,
+        });
+
+        const resolvedBugs = await Bug.countDocuments({
+            sprint: sprintId,
+            status: "resolved",
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Sprint report generated successfully",
+
+            report: {
+                sprint,
+
+                totalTasks,
+                completedTasks,
+                pendingTasks,
+                inProgressTasks,
+
+                totalStoryPoints,
+                completedStoryPoints,
+
+                sprintProgress,
+
+                totalBugs,
+                resolvedBugs,
+            },
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Failed to generate sprint report",
+            error: error.message,
+        });
+    }
 };
 
-// employee report 
 exports.employeeReport = async (req, res) => {
     try {
-        // Get employeeId
         const employeeId = req.params.employeeId;
 
-        // Find employee
-        const employee = await User.findById(employeeId);
+        if (!employeeId) {
+            return res.status(400).json({
+                success: false,
+                message: "Employee ID is required",
+            });
+        }
 
-        // If employee does not exist
+        const employee = await User.findById(employeeId)
+            .select("-password");
+
         if (!employee) {
             return res.status(404).json({
                 success: false,
@@ -239,72 +244,75 @@ exports.employeeReport = async (req, res) => {
             });
         }
 
-        // Get employee tasks
         const tasks = await Task.find({
             assignedTo: employeeId,
         });
 
-        // Get employee bugs
         const bugs = await Bug.find({
             assignedTo: employeeId,
         });
 
-        // Get employee time logs
         const timeLogs = await TimeLog.find({
             user: employeeId,
         });
-
-        // Calculate total assigned tasks
         const totalAssignedTasks = tasks.length;
 
-        // Calculate completed tasks
         const completedTasks = await Task.countDocuments({
             assignedTo: employeeId,
             status: "completed",
         });
 
-        // Calculate pending tasks
         const pendingTasks = await Task.countDocuments({
             assignedTo: employeeId,
-            status: "to-do",
+            status: "pending",
         });
 
-        // Calculate total assigned bugs
         const totalAssignedBugs = bugs.length;
 
-        // Calculate resolved bugs
         const resolvedBugs = await Bug.countDocuments({
             assignedTo: employeeId,
             status: "resolved",
         });
 
-        // Calculate total working hours
         const totalWorkingHours = timeLogs.reduce(
-            (total, log) => total + (log.hoursWorked || 0),
+            (total, log) =>
+                total + Number(log.hoursWorked || 0),
             0
         );
 
-        // Calculate overtime
-        const overtime = totalWorkingHours > 8
-            ? totalWorkingHours - 8
-            : 0;
 
-        // Calculate task completion rate
-        const taskCompletionRate = totalAssignedTasks > 0
-            ? (completedTasks / totalAssignedTasks) * 100
-            : 0;
+        const overtime =
+            totalWorkingHours > 8
+                ? totalWorkingHours - 8
+                : 0;
+        const taskCompletionRate =
+            totalAssignedTasks > 0
+                ? Number(
+                    (
+                        (completedTasks /
+                            totalAssignedTasks) *
+                        100
+                    ).toFixed(2)
+                )
+                : 0;
 
         return res.status(200).json({
             success: true,
+            message: "Employee report generated successfully",
+
             employee,
+
             report: {
                 totalAssignedTasks,
                 completedTasks,
                 pendingTasks,
+
                 totalAssignedBugs,
                 resolvedBugs,
+
                 totalWorkingHours,
                 overtime,
+
                 taskCompletionRate,
             },
         });
@@ -312,12 +320,370 @@ exports.employeeReport = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             success: false,
-            message: error.message,
+            message: "Failed to generate employee report",
+            error: error.message,
+        });
+    }
+};
+
+exports.taskReport = async (req, res) => {
+    try {
+        const {
+            projectId,
+            sprintId,
+            assignedTo,
+        } = req.query;
+
+        const filter = {};
+
+        if (projectId) {
+            filter.project = projectId;
+        }
+
+        if (sprintId) {
+            filter.sprint = sprintId;
+        }
+
+        if (assignedTo) {
+            filter.assignedTo = assignedTo;
+        }
+
+        const tasks = await Task.find(filter);
+        const totalTasks = tasks.length;
+
+        const completedTasks = tasks.filter(
+            (task) => task.status === "completed"
+        ).length;
+
+        const pendingTasks = tasks.filter(
+            (task) => task.status === "pending"
+        ).length;
+
+        const inProgressTasks = tasks.filter(
+            (task) => task.status === "in-progress"
+        ).length;
+
+        const priorityReport = {
+            low: 0,
+            medium: 0,
+            high: 0,
+            critical: 0,
+        };
+
+        tasks.forEach((task) => {
+            const priority = String(
+                task.priority || ""
+            ).toLowerCase();
+
+            if (
+                Object.prototype.hasOwnProperty.call(
+                    priorityReport,
+                    priority
+                )
+            ) {
+                priorityReport[priority]++;
+            }
+        });
+
+        const totalStoryPoints = tasks.reduce(
+            (total, task) =>
+                total + Number(task.storyPoints || 0),
+            0
+        );
+
+        const completedStoryPoints = tasks
+            .filter(
+                (task) => task.status === "completed"
+            )
+            .reduce(
+                (total, task) =>
+                    total + Number(task.storyPoints || 0),
+                0
+            );
+
+
+        const completionRate =
+            totalTasks > 0
+                ? Number(
+                    (
+                        (completedTasks /
+                            totalTasks) *
+                        100
+                    ).toFixed(2)
+                )
+                : 0;
+
+
+        return res.status(200).json({
+            success: true,
+            message: "Task report generated successfully",
+
+            report: {
+                totalTasks,
+                completedTasks,
+                pendingTasks,
+                inProgressTasks,
+
+                totalStoryPoints,
+                completedStoryPoints,
+
+                completionRate,
+
+                priorityReport,
+            },
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Failed to generate task report",
+            error: error.message,
+        });
+    }
+};
+
+exports.bugReport = async (req, res) => {
+    try {
+        const {
+            projectId,
+            sprintId,
+            assignedTo,
+        } = req.query;
+
+        const filter = {};
+
+        if (projectId) {
+            filter.project = projectId;
+        }
+
+        if (sprintId) {
+            filter.sprint = sprintId;
+        }
+
+        if (assignedTo) {
+            filter.assignedTo = assignedTo;
+        }
+        const bugs = await Bug.find(filter);
+        const totalBugs = bugs.length;
+
+        const openBugs = bugs.filter(
+            (bug) => bug.status === "open"
+        ).length;
+
+        const resolvedBugs = bugs.filter(
+            (bug) => bug.status === "resolved"
+        ).length;
+
+        const severityReport = {
+            low: 0,
+            medium: 0,
+            high: 0,
+            critical: 0,
+        };
+
+        bugs.forEach((bug) => {
+            const severity = String(
+                bug.severity || ""
+            ).toLowerCase();
+
+            if (
+                Object.prototype.hasOwnProperty.call(
+                    severityReport,
+                    severity
+                )
+            ) {
+                severityReport[severity]++;
+            }
+        });
+
+        const priorityReport = {
+            low: 0,
+            medium: 0,
+            high: 0,
+            critical: 0,
+        };
+
+        bugs.forEach((bug) => {
+            const priority = String(
+                bug.priority || ""
+            ).toLowerCase();
+
+            if (
+                Object.prototype.hasOwnProperty.call(
+                    priorityReport,
+                    priority
+                )
+            ) {
+                priorityReport[priority]++;
+            }
+        });
+
+        const resolutionRate =
+            totalBugs > 0
+                ? Number(
+                    (
+                        (resolvedBugs /
+                            totalBugs) *
+                        100
+                    ).toFixed(2)
+                )
+                : 0;
+
+
+        return res.status(200).json({
+            success: true,
+            message: "Bug report generated successfully",
+
+            report: {
+                totalBugs,
+                openBugs,
+                resolvedBugs,
+
+                resolutionRate,
+
+                severityReport,
+                priorityReport,
+            },
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Failed to generate bug report",
+            error: error.message,
         });
     }
 };
 
 
-// task report 
-// timelog report 
-// bug report 
+exports.timeLogReport = async (req, res) => {
+    try {
+        const {
+            startDate,
+            endDate,
+            projectId,
+            userId,
+        } = req.query;
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Start date and end date are required",
+            });
+        }
+
+
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+
+        end.setHours(23, 59, 59, 999);
+
+
+        if (
+            Number.isNaN(start.getTime()) ||
+            Number.isNaN(end.getTime())
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid date range",
+            });
+        }
+
+        if (start > end) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Start date cannot be greater than end date",
+            });
+        }
+
+        const filter = {
+            createdAt: {
+                $gte: start,
+                $lte: end,
+            },
+        };
+
+        if (projectId) {
+            filter.project = projectId;
+        }
+
+        if (userId) {
+            filter.user = userId;
+        }
+        const timeLogs = await TimeLog.find(filter);
+
+        const totalLoggedHours = timeLogs.reduce(
+            (total, log) =>
+                total + Number(log.hoursWorked || 0),
+            0
+        );
+
+
+        const totalOvertime = timeLogs.reduce(
+            (total, log) =>
+                total + Number(log.overtime || 0),
+            0
+        );
+
+        const workingDays = new Set();
+
+        timeLogs.forEach((log) => {
+
+            const date =
+                log.date ||
+                log.createdAt;
+
+            if (date) {
+                workingDays.add(
+                    new Date(date)
+                        .toISOString()
+                        .split("T")[0]
+                );
+            }
+        });
+
+
+        const totalWorkingDays =
+            workingDays.size;
+
+
+        const averageHoursPerDay =
+            totalWorkingDays > 0
+                ? Number(
+                    (
+                        totalLoggedHours /
+                        totalWorkingDays
+                    ).toFixed(2)
+                )
+                : 0;
+
+        return res.status(200).json({
+            success: true,
+            message:
+                "Time log report generated successfully",
+
+            report: {
+                startDate,
+                endDate,
+
+                totalLogs: timeLogs.length,
+
+                totalLoggedHours,
+                totalOvertime,
+
+                totalWorkingDays,
+                averageHoursPerDay,
+            },
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message:
+                "Failed to generate time log report",
+            error: error.message,
+        });
+    }
+};

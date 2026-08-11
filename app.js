@@ -22,6 +22,7 @@ const timelogRoute = require("./routes/timelogRoutes");
 const dashboardRoute = require("./routes/dashboardRoutes");
 const auditLogRoute = require("./routes/auditLogRoutes");
 const searchRoute = require("./routes/searchRoutes");
+const reportRoute = require("./routes/reportRoutes");
 
 // Check route imports
 // console.log("authRoute:", typeof authRoute);
@@ -63,6 +64,8 @@ app.use("/api/timeLog", timelogRoute);
 app.use("api/dashboard", dashboardRoute);
 app.use("/api/audit-logs", auditLogRoute);
 app.use("/api/search", searchRoute);
+app.use("/api/reports", reportRoute);
+
 
 app.get("/", (req, res) => {
     res.status(200).json({

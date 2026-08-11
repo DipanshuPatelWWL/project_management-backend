@@ -3,9 +3,13 @@ const app = require("./app");
 const connectDB = require("./config/db");
 require("dotenv").config();
 
-const server = http.createServer(app);
+const {
+  initializeSocket,
+} = require("./socket/socket");
 
+const server = http.createServer(app);
 const PORT = process.env.PORT || 4000;
+initializeSocket(server);
 
 const startServer = async () => {
   try {

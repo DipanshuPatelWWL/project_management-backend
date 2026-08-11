@@ -1,6 +1,10 @@
 const Task = require("../models/Task");
 const User = require("../models/User");
 
+const {
+    sendNotification,
+} = require("../services/notificationService");
+
 
 // Create Task
 exports.createTask = async (req, res) => {
@@ -47,6 +51,18 @@ exports.createTask = async (req, res) => {
             createdBy: req.user._id,
             updatedBy: req.user._id,
         });
+
+        if (assignedTo) {
+            await sendNotification({
+                receiver: assignedTo,
+                sender: req.user._id,
+                title: "New Task Assigned",
+                message: `You have been assigned a new task: ${task.taskTitle}`,
+                type: "Task",
+                entityType: "Task",
+                entityId: task._id,
+            });
+        }
 
         return res.status(201).json({
             success: true,
@@ -162,6 +178,21 @@ exports.updateTask = async (req, res) => {
 
         await task.save();
 
+        if (
+            task.assignedTo &&
+            task.assignedTo.toString() !== req.user._id.toString()
+        ) {
+            await sendNotification({
+                receiver: task.assignedTo,
+                sender: req.user._id,
+                title: "Task Updated",
+                message: `Your task "${task.taskTitle}" has been updated.`,
+                type: "Task",
+                entityType: "Task",
+                entityId: task._id,
+            });
+        }
+
         return res.status(200).json({
             success: true,
             message: "Task updated successfully",
@@ -191,6 +222,21 @@ exports.deleteTask = async (req, res) => {
         }
 
         await Task.findByIdAndDelete(req.params.taskId);
+
+        if (
+            assignedUser &&
+            assignedUser.toString() !== req.user._id.toString()
+        ) {
+            await sendNotification({
+                receiver: assignedUser,
+                sender: req.user._id,
+                title: "Task Deleted",
+                message: `The task "${task.taskTitle}" assigned to you has been deleted.`,
+                type: "Task",
+                entityType: "Task",
+                entityId: task._id,
+            });
+        }
 
         return res.status(200).json({
             success: true,
@@ -236,6 +282,20 @@ exports.assignTask = async (req, res) => {
 
         await task.save();
 
+        if (
+            assignedTo.toString() !== req.user._id.toString()
+        ) {
+            await sendNotification({
+                receiver: assignedTo,
+                sender: req.user._id,
+                title: "Task Assigned",
+                message: `You have been assigned task: ${task.taskTitle}`,
+                type: "Task",
+                entityType: "Task",
+                entityId: task._id,
+            });
+        }
+
         return res.status(200).json({
             success: true,
             message: "Task assigned successfully",
@@ -275,6 +335,21 @@ exports.changeTaskStatus = async (req, res) => {
 
         await task.save();
 
+        if (
+            task.assignedTo &&
+            task.assignedTo.toString() !== req.user._id.toString()
+        ) {
+            await sendNotification({
+                receiver: task.assignedTo,
+                sender: req.user._id,
+                title: "Task Status Updated",
+                message: `Task "${task.taskTitle}" status has been changed to ${status}.`,
+                type: "Task",
+                entityType: "Task",
+                entityId: task._id,
+            });
+        }
+
         return res.status(200).json({
             success: true,
             message: "Task status changed successfully",
@@ -310,6 +385,21 @@ exports.changePriority = async (req, res) => {
 
         await task.save();
 
+
+        if (
+            task.assignedTo &&
+            task.assignedTo.toString() !== req.user._id.toString()
+        ) {
+            await sendNotification({
+                receiver: task.assignedTo,
+                sender: req.user._id,
+                title: "Task Priority Updated",
+                message: `Task "${task.taskTitle}" priority has been changed to ${priority}.`,
+                type: "Task",
+                entityType: "Task",
+                entityId: task._id,
+            });
+        }
         return res.status(200).json({
             success: true,
             message: "Task priority changed successfully",

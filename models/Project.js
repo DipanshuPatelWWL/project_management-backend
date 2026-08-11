@@ -7,7 +7,7 @@ const ProjectSchema = new mongoose.Schema(
       projectName : {
             type :String,
             trim : true,
-
+         
         },
          
         projectCode : {

@@ -11,7 +11,7 @@ const { protect } = require("../middleware/authMiddleware");
 router.post(
     "/",
     protect,
-    authorize("SuperAdmin","admin"),
+    authorize("SuperAdmin","Admin"),
     createCompany
 );
 

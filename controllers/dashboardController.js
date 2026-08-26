@@ -9,10 +9,11 @@ const Meeting = require("../models/Meeting");
 const Document = require("../models/Document");
 const TimeLog = require("../models/TimeLog");
 
+
 exports.getSuperAdminDashboard = async (req, res) => {
     try {
 
-        // Total companies 
+        // Total companies
         const totalCompanies = await Company.countDocuments();
 
         // Total Clients
@@ -76,7 +77,7 @@ exports.getSuperAdminDashboard = async (req, res) => {
         });
 
         // Total Meetings
-        const totalMeetings =   await Meeting.countDocuments();
+        const totalMeetings = await Meeting.countDocuments();
 
         // Total Documents
         const totalDocuments = await Document.countDocuments();
@@ -84,7 +85,6 @@ exports.getSuperAdminDashboard = async (req, res) => {
         // Total Time Logs
         const totalTimeLogs = await TimeLog.countDocuments();
 
-        
         // Return Dashboard Data
         return res.status(200).json({
             success: true,
@@ -115,8 +115,6 @@ exports.getSuperAdminDashboard = async (req, res) => {
                 totalMeetings,
                 totalDocuments,
                 totalTimeLogs,
-
-               
             },
         });
 
@@ -131,150 +129,159 @@ exports.getSuperAdminDashboard = async (req, res) => {
 };
 
 
+exports.getAdminDashboard = async (req, res) => {
+    try {
 
+        // Total Users
+        const totalUsers = await User.countDocuments();
 
+        // Total Projects
+        const totalProjects = await Project.countDocuments();
 
-exports.getAdminDashboard = async (req,res) => {
-   try {
-       //users 
-       const totalUsers = await users.countDocument();
+        // Total Tasks
+        const totalTasks = await Task.countDocuments();
 
-       //total projects 
-       const  totalProjects = await Projects.countDocument();
+        // Total Bugs
+        const totalBugs = await Bug.countDocuments();
 
-     // total tasks
-       const totalTasks = await Tasks.countDocument();
-
-       //bugs 
-       const totalbugs =  await Bugs.CountDocument();
-
-
-
-       //all notifications 
-        const totalNotifications = await Notifications.countDocument();
-
-       return res.status(200).json({
+        // Return Dashboard Data
+        return res.status(200).json({
             success: true,
             message: "Dashboard data fetched successfully",
-            
-            dashboard :{
+
+            dashboard: {
                 totalUsers,
                 totalProjects,
                 totalTasks,
                 totalBugs,
-                totalNotifications,
             },
-       });
-        
+        });
 
-   } catch (error) {
-         return res.status(500).json({
+    } catch (error) {
+
+        return res.status(500).json({
             success: false,
             message: "Failed to fetch dashboard data",
             error: error.message,
         });
-   }
-     
+    }
 };
 
-exports.getProjectManagerDashboard = async(req,res) => {
-      try {
-        
-        // my project 
-       const myProject = await ProjectManager.countDocument({
-        project : req.param.projectId
-    });
 
-      // active sprints
-         const activeSprints = await Sprints.countDocuments({
-            status : "active",
-         })
+exports.getProjectManagerDashboard = async (req, res) => {
+    try {
 
-        // team members 
-        const teamMembers = await Project.countDocuments({
-            teamMembers,
+        // Get projectId
+        const { projectId } = req.params;
+
+        // My project
+        const myProject = await Project.countDocuments({
+            _id: projectId,
         });
 
-        //pendingTasks 
+        // Active sprints
+        const activeSprints = await Sprint.countDocuments({
+            project: projectId,
+            status: "active",
+        });
+
+        // Team members
+        const project = await Project.findById(projectId);
+
+        const teamMembers = project && project.teamMembers
+            ? project.teamMembers.length
+            : 0;
+
+        // Pending tasks
         const pendingTasks = await Task.countDocuments({
-             status : "in - progress",
+            project: projectId,
+            status: {
+                $ne: "completed",
+            },
         });
-        // open bugs 
+
+        // Open bugs
         const openBugs = await Bug.countDocuments({
+            project: projectId,
             status: "open",
         });
 
-        // upcoming meetings 
-        const upcomingMeetings = await Meeting.countDocument({
-               status : " scheduled",
+        // Upcoming meetings
+        const upcomingMeetings = await Meeting.countDocuments({
+            project: projectId,
+            status: "scheduled",
         });
-           return res.status(200).json({
+
+        return res.status(200).json({
             success: true,
             message: "Dashboard data fetched successfully",
 
-            dashboard : {
+            dashboard: {
                 myProject,
                 activeSprints,
                 teamMembers,
                 pendingTasks,
                 openBugs,
                 upcomingMeetings,
-            }
-           });
+            },
+        });
 
-      } catch (error ) {
+    } catch (error) {
+
         return res.status(500).json({
             success: false,
             message: "Failed to fetch dashboard data",
             error: error.message,
         });
-
-      }
-     
+    }
 };
 
-exports.getTeamLeadDashboard = async (req,res)=> {
+
+exports.getTeamLeadDashboard = async (req, res) => {
     try {
-        
-      // my  team 
-const myTeam = await Project.countDocuments({
-    teamLead: req.user._id
-});
 
-// My Sprint
-const mySprint = await Sprint.countDocuments({
-    status: "active"
-});
+        // My team
+        const myTeam = await Project.countDocuments({
+            teamLead: req.user._id,
+        });
 
-// Pending Review
-const pendingReview = await Task.countDocuments({
-    status: "completed"
-});
+        // My Sprint
+        const mySprint = await Sprint.countDocuments({
+            status: "active",
+        });
 
-// Assigned Tasks
-const assignedTasks = await Task.countDocuments({
-    assignedTo: req.user._id
-});
+        // Pending Review
+        const pendingReview = await Task.countDocuments({
+            assignedBy: req.user._id,
+            status: "completed",
+        });
 
-// Bugs
-const bugs = await Bug.countDocuments({
-    assignedTo: req.user._id
-});
+        // Assigned Tasks
+        const assignedTasks = await Task.countDocuments({
+            assignedTo: req.user._id,
+        });
 
-return res.status(200).json({
+        // Bugs
+        const bugs = await Bug.countDocuments({
+            assignedTo: req.user._id,
+        });
+
+        return res.status(200).json({
             success: true,
             message: "Dashboard data fetched successfully",
 
-            dashboard : {
+            dashboard: {
                 myTeam,
                 mySprint,
-             pendingReview,
-             assignedTasks,
-                    Bugs,
-            }
-           });
-    }catch(error) {
-         return res.status(500).json({
+                pendingReview,
+                assignedTasks,
+                bugs,
+            },
+        });
+
+    } catch (error) {
+
+        return res.status(500).json({
             success: false,
             message: "Failed to fetch dashboard data",
             error: error.message,
@@ -282,137 +289,115 @@ return res.status(200).json({
     }
 };
 
-exports.getDeveloperDashboard = async(req,res)=> {
-  
 
-      //my task 
-        const myTask = await Task.CountDocuments({
-            assignedTo : req.user._id,
+exports.getDeveloperDashboard = async (req, res) => {
+    try {
+
+        // My tasks
+        const myTasks = await Task.countDocuments({
+            assignedTo: req.user._id,
         });
 
-        //todays task
-        const todayTask = await Task.countDocuments({
-               assignedTo: req.user._id,
+        // Today's tasks
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+
+        const startOfTomorrow = new Date(startOfToday);
+        startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
+        const todaysTasks = await Task.countDocuments({
+            assignedTo: req.user._id,
             dueDate: {
-            $gte: startOfToday,
-            $lt: startOfTomorrow
-    }
-});
-
-  // pending task 
-       const pendingTask = await Task.CountDocuments({
-           status : "in-progress",
+                $gte: startOfToday,
+                $lt: startOfTomorrow,
+            },
         });
 
-   //completed task 
-     const completedTask = await Task.CountDocuments({
-           status : "completed",
+        // Pending tasks
+        const pendingTasks = await Task.countDocuments({
+            assignedTo: req.user._id,
+            status: "in-progress",
         });
 
-        //my bugs
-        const closedBugs = await Bug.countDocuments({
-            assignedTo : req.user._id,
+        // Completed tasks
+        const completedTasks = await Task.countDocuments({
+            assignedTo: req.user._id,
+            status: "completed",
         });
 
-        // time logged 
-        const timeLogged = await TimeLog.countDocuments();
+        // My bugs
+        const myBugs = await Bug.countDocuments({
+            assignedTo: req.user._id,
+        });
+
+        // Time logged
+        const timeLogged = await TimeLog.countDocuments({
+            user: req.user._id,
+        });
 
         return res.status(200).json({
             success: true,
             message: "Dashboard data fetched successfully",
 
-            dashboard : {
+            dashboard: {
                 myTasks,
-              todaysTasks,
-              pendingTasks,
-             completedTasks,
-                  myBugs,
+                todaysTasks,
+                pendingTasks,
+                completedTasks,
+                myBugs,
                 timeLogged,
-            }
-           });
-
-};
-
-exports.getQADashboard = async (req,res) => {
-    try {
-        // assigned bugs 
-         const assignedBugs = await Bugs.countDocuments({
-            assignedTo : req.user._id
+            },
         });
 
-        //open bugs 
+    } catch (error) {
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch dashboard data",
+            error: error.message,
+        });
+    }
+};
+
+
+exports.getQADashboard = async (req, res) => {
+    try {
+
+        // Assigned bugs
+        const assignedBugs = await Bug.countDocuments({
+            assignedTo: req.user._id,
+        });
+
+        // Open bugs
         const openBugs = await Bug.countDocuments({
             status: "open",
         });
 
-        //fixed bugs 
+        // Fixed bugs
         const fixedBugs = await Bug.countDocuments({
-            status: "resolved"
+            status: "resolved",
         });
 
-        //retestingBugs
-       const retestingBugs = await Bug.countDocuments({
-            status: "reopened"
-        });   
-            return res.status(200).json({
-            success: true,
-            message: "Dashboard data fetched successfully",
-
-            dashboard : {
-                     assignedBugs,
-                       openBugs,
-                      fixedBugs,
-                     retestingBugs,
-            }
-           });
-
-       
-
-    }catch (error) {
-         return res.status(500).json({
-            success: false,
-            message: "Failed to fetch dashboard data",
-            error: error.message,
+        // Retesting bugs
+        const retestingBugs = await Bug.countDocuments({
+            status: "reopened",
         });
-    }
-};
-
-
-exports.getClientDashboard = async(req,res) => {
-  
-    try {
-        // my project 
-         const myProject = await ProjectManager.countDocument({
-        project : req.param.projectId
-    });
-
-    // project progress
-        const projectProgress = await Project.countDocument({
-        progress :
-        {$gte: 0,
-        $lte: 100} 
-    });
-    // total documents
-            const totalDocuments = await Document.countDocuments();
-
-    // total meeting
-            const totalMeetings = await Meeting.countDocuments();
-
 
         return res.status(200).json({
             success: true,
             message: "Dashboard data fetched successfully",
 
-            dashboard : {
-                    myProjects,
-                 ProjectProgress,
-                     totalDocuments,
-                 totalMeetings,
-            }
-           });
+            dashboard: {
+                assignedBugs,
+                openBugs,
+                fixedBugs,
+                retestingBugs,
+            },
+        });
 
     } catch (error) {
-           return res.status(500).json({
+
+        return res.status(500).json({
             success: false,
             message: "Failed to fetch dashboard data",
             error: error.message,
@@ -420,3 +405,51 @@ exports.getClientDashboard = async(req,res) => {
     }
 };
 
+
+exports.getClientDashboard = async (req, res) => {
+    try {
+
+        // Get projectId
+        const { projectId } = req.params;
+
+        // My project
+        const myProjects = await Project.countDocuments({
+            _id: projectId,
+        });
+
+        // Project progress
+        const projectProgress = await Project.countDocuments({
+            _id: projectId,
+            progress: {
+                $gte: 0,
+                $lte: 100,
+            },
+        });
+
+        // Total documents
+        const totalDocuments = await Document.countDocuments();
+
+        // Total meetings
+        const totalMeetings = await Meeting.countDocuments();
+
+        return res.status(200).json({
+            success: true,
+            message: "Dashboard data fetched successfully",
+
+            dashboard: {
+                myProjects,
+                projectProgress,
+                totalDocuments,
+                totalMeetings,
+            },
+        });
+
+    } catch (error) {
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch dashboard data",
+            error: error.message,
+        });
+    }
+};

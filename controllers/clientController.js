@@ -2,7 +2,7 @@ const Client = require("../models/client");
 
 exports.createClient = async (req, res) => {
     try {
-        const {clientName,
+        const {ClientName,
             company,
             email,
             phone,
@@ -13,7 +13,7 @@ exports.createClient = async (req, res) => {
         req.body;
 
         // Check required fields
-        if (!clientName || !company || !phone || !address) {
+        if (!ClientName || !company || !phone || !address) {
             return res.status(400).json({
                 success: false,
                 message: "Please fill all required fields",
@@ -47,7 +47,7 @@ exports.createClient = async (req, res) => {
         }
 
         const client = await Client.create({
-            clientName,
+            ClientName,
             company,
             email: email ? email.toLowerCase() : undefined,
             phone,
@@ -78,8 +78,9 @@ exports.getClient = async (req,res) => {
     try {
         const client = await Client.find();
             return res.status(500).json({
-            success: True,
+            success: true,
             message: "clients found",
+            clients: client
     
         });
          
@@ -205,7 +206,7 @@ exports.updateClient = async (req, res) => {
 
 exports.deleteClient = async (req, res) => {
     try {
-        const company = await Company.findByIdAndDelete(req.params.ClientId);
+        const company = await Client.findByIdAndDelete(req.params.ClientId);
 
         if (!Client) {
             return res.status(404).json({

@@ -9,6 +9,7 @@ exports.sendNotification = async ({
     type,
     entityType = null,
     entityId = null,
+    
 }) => {
 
     try {

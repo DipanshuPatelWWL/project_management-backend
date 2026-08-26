@@ -68,7 +68,7 @@ exports.createDocument = async(req,res) => {
 exports.getDocuments = async(req,res) => {
      
     try { 
-
+         
         const documents = await Document.find();
 
         return res.status(200).json({

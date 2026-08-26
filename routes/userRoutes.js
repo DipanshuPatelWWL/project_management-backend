@@ -15,6 +15,8 @@ const {
 
 const { protect } = require("../middleware/authMiddleware");
 const { authorize } = require("../middleware/roleMiddleware");
+const upload = require("../middleware/uploadMiddleware");   
+const { validateRegister } = require("../middleware/validationMiddleware");
 
 // User Management (SuperAdmin / Admin)
 
@@ -22,6 +24,7 @@ const { authorize } = require("../middleware/roleMiddleware");
 router.post(
     "/",
     protect,
+    upload.single("profileImage"),
     authorize("SuperAdmin", "Admin"),
     createUser
 );
@@ -29,8 +32,9 @@ router.post(
 // Get All Users
 router.get(
     "/",
-    protect,
-    authorize("SuperAdmin", "Admin"),
+   
+     protect,
+     authorize("SuperAdmin", "Admin"),
     getUsers
 );
 
@@ -80,5 +84,15 @@ router.put(
     protect,
     updateProfile
 );
+
+// Update Own Profile Image
+router.put(
+    "/profile/image",
+    protect,
+    upload.single("profileImage"),
+    updateProfileImage
+);
+
+
 
 module.exports = router;

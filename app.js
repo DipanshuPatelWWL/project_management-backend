@@ -23,6 +23,8 @@ const dashboardRoute = require("./routes/dashboardRoutes");
 const auditLogRoute = require("./routes/auditLogRoutes");
 const searchRoute = require("./routes/searchRoutes");
 const reportRoute = require("./routes/reportRoutes");
+const errorHandler = require("./middleware/errorMiddleware");
+  
 
 // Check route imports
 // console.log("authRoute:", typeof authRoute);
@@ -61,7 +63,7 @@ app.use("/api/meeting", meetingRoute);
 app.use("/api/document", documentRoute);
 app.use("/api/notifications", notificationRoute);
 app.use("/api/timeLog", timelogRoute);
-app.use("api/dashboard", dashboardRoute);
+app.use("/api/dashboard", dashboardRoute);
 app.use("/api/audit-logs", auditLogRoute);
 app.use("/api/search", searchRoute);
 app.use("/api/reports", reportRoute);
@@ -82,5 +84,6 @@ app.use((req, res) => {
     });
 });
 
+app.use(errorHandler);
 
 module.exports = app;

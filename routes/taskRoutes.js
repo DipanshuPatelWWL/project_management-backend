@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
-
+const { protect } = require("../middleware/authMiddleware");
+const upload = require("../middleware/uploadMiddleware");  
 const {
     createTask,
     getTasks,
@@ -16,27 +17,28 @@ const {
 
 
 
-router.post("/", createTask);
-
+router.post("/", upload.array("attachments", 5), createTask);
 
 router.get("/",  getTasks);
 
 router.get("/:taskId",  getTaskById);
 
 
-router.put("/:taskId", updateTask);
+router.put("/:taskId",upload.array("attachments", 5), protect,updateTask);
 
 
-router.delete("/:taskId",  deleteTask);
+router.delete("/:taskId", protect, deleteTask);
 
 
-router.put("/:taskId/assign",  assignTask);
+router.put("/:taskId/assign", protect, assignTask);
 
 
-router.put("/:taskId/status", changeTaskStatus);
+router.put("/:taskId/status",protect, changeTaskStatus);
 
 
-router.put("/:taskId/priority", changePriority);
+router.put("/:taskId/priority",protect, changePriority);
 
 
 module.exports = router;
+
+

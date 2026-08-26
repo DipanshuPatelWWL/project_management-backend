@@ -77,7 +77,7 @@ exports.login = async (req, res) => {
             });
         }
 
-        const user = await User.findOne({ email: email.toLowerCase() });
+        const user = await User.findOne({ email: email.toLowerCase() }).select("+password");;
 
         if (!user) {
             return res.status(401).json({
@@ -105,6 +105,7 @@ exports.login = async (req, res) => {
             res.cookie("token", token, cookieOptions).status(200).json({
                 success: true,
                 message: 'User Logged in successfully',
+                token,
                 user: {
                     id: user._id,
                     employeeId: user.employeeId,

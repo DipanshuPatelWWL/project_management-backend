@@ -1,7 +1,7 @@
 const Project = require("../models/Project");
 const User = require("../models/User");
 const Client = require("../models/Client");
-
+const sendProjectAssignmentEmail = require("../services/emailService");
 
 exports.createProject = async (req, res) => {
     try {
@@ -75,6 +75,13 @@ exports.createProject = async (req, res) => {
             message: "Project created successfully",
             project,
         });
+       
+        await sendProjectAssignmentEmail({
+             user : createdBy,
+             project : projectName,
+        });
+
+
 
     } catch (error) {
         return res.status(500).json({
@@ -85,22 +92,21 @@ exports.createProject = async (req, res) => {
     }
 };
 
-exports.getProjects = async(req,res) =>{
-  
+exports.getProjects = async (req, res) => {
     try {
-        const companies = await Company.find();
+        const projects = await Project.find();
 
         return res.status(200).json({
             success: true,
-            count: companies.length,
-            message: "project  fetched successfully",
-            companies,
+            count: projects.length,
+            message: "Projects fetched successfully",
+            projects,
         });
 
     } catch (error) {
         return res.status(500).json({
             success: false,
-            message: "Failed to fetch project  data",
+            message: "Failed to fetch project data",
             error: error.message,
         });
     }
@@ -347,7 +353,7 @@ exports.assignMembers = async (req, res) => {
             });
         }
 
-        const member = await Client.findById(teamMembers);
+        const member = await User.findById(teamMembers);
 
         if (!member) {
             return res.status(404).json({

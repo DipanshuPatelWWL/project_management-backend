@@ -1,6 +1,5 @@
 const Notification = require("../models/notification");
-
-
+const { sendNotificationEmail } = require("../services/emailService");
 // Create Notification
 exports.createNotification = async(req, res) => {
 
@@ -32,6 +31,8 @@ exports.createNotification = async(req, res) => {
             message,
             type,
         });
+
+        await sendNotificationEmail(receiver, title, message);
 
 
         return res.status(201).json({
@@ -180,20 +181,24 @@ exports.markAllAsRead = async(req, res) => {
 exports.deleteNotification = async (req, res) => {
     try {
 
-        const  notification = await Notification.findById(req.params.notificationId);
+        const notification = await Notification.findById(
+            req.params.notificationId
+        );
 
         if (!notification) {
             return res.status(404).json({
                 success: false,
-                message: "meeting not found",
+                message: "Notification not found",
             });
         }
 
-        await meeting.findByIdAndDelete(req.params.notificationId);
+        await Notification.findByIdAndDelete(
+            req.params.notificationId
+        );
 
         return res.status(200).json({
             success: true,
-            message: "notification deleted successfully",
+            message: "Notification deleted successfully",
         });
 
     } catch (error) {

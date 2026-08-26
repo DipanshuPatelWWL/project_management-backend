@@ -1,11 +1,12 @@
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
-
+const  {sendWelcomeEmail} = require("../services/emailService");
 
 // Create User
 exports.createUser = async (req, res) => {
+    console.log("request",req.body)
     try {
-        const { employeeId, firstName, lastName, email, phone, password, role, company, designation, department, status, } = req.body;
+        const { employeeId, firstName, lastName, email, phone, password, role, company, designation, department, status,reportingManager,joiningDate,employmentType,workLocation } = req.body;
 
 
         if (!employeeId || !firstName || !lastName || !email || !phone || !password || !role || !company || !designation || !department) {
@@ -63,13 +64,16 @@ exports.createUser = async (req, res) => {
             designation,
             department,
             status: status || "Active",
-            reportingManager,
-            joiningDate,
+            reportingManager:req.user._id||"N/A",
+            joiningDate: new Date(),
             employmentType,
             workLocation,
             createdBy: req.user._id,
             updatedBy: req.user._id,
         });
+
+console.log("email start")
+       await sendWelcomeEmail(email, firstName);
 
         // password wapis nahi bhejna 
         const createdUser = await User.findById(user._id).select("-password");
@@ -437,5 +441,36 @@ exports.changeUserRole = async (req, res) => {
     }
     catch (error) {
         res.status(500).json({ success: false, message: "Something went wrong", });
+    }
+};
+
+exports.updateProfileImage = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: "No image uploaded",
+            });
+        }
+
+        const imageUrl = `/uploads/${req.file.filename}`;
+
+        const user = await User.findByIdAndUpdate(
+            req.user._id,
+            { profileImage: imageUrl },
+            { new: true }
+        ).select("-password");
+
+        return res.status(200).json({
+            success: true,
+            message: "Profile image updated successfully",
+            user,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update profile image",
+            error: error.message,
+        });
     }
 };

@@ -1,6 +1,6 @@
 const Task = require("../models/Task");
 const User = require("../models/User");
-
+const {sendTaskAssignmentEmail} = require("../services/emailService");
 const {
     sendNotification,
 } = require("../services/notificationService");
@@ -33,6 +33,10 @@ exports.createTask = async (req, res) => {
             });
         }
 
+       // Postman se aayi files se URLs banao
+     const attachmentUrls = req.files ? req.files.map(file => `/uploads/${file.filename}`) : [];
+      
+
         const task = await Task.create({
             taskTitle,
             description,
@@ -50,7 +54,10 @@ exports.createTask = async (req, res) => {
             attachments,
             createdBy: req.user._id,
             updatedBy: req.user._id,
+             attachments: attachmentUrls,
         });
+
+
 
         if (assignedTo) {
             await sendNotification({
@@ -58,11 +65,18 @@ exports.createTask = async (req, res) => {
                 sender: req.user._id,
                 title: "New Task Assigned",
                 message: `You have been assigned a new task: ${task.taskTitle}`,
-                type: "Task",
+                type: "task",
                 entityType: "Task",
                 entityId: task._id,
             });
         }
+
+           await sendTaskAssignmentEmail({
+            assignedUser: assignedTo,
+            task: taskTitle,
+            project : project,
+        })
+
 
         return res.status(201).json({
             success: true,
@@ -160,7 +174,7 @@ exports.updateTask = async (req, res) => {
 
         if (taskTitle) task.taskTitle = taskTitle;
         if (description) task.description = description;
-        if (project) task.project = project;
+        if (project) task.project = project; 
         if (sprint) task.sprint = sprint;
         if (priority) task.priority = priority;
         if (status) task.status = status;
@@ -187,7 +201,7 @@ exports.updateTask = async (req, res) => {
                 sender: req.user._id,
                 title: "Task Updated",
                 message: `Your task "${task.taskTitle}" has been updated.`,
-                type: "Task",
+                type: "task",
                 entityType: "Task",
                 entityId: task._id,
             });
@@ -223,6 +237,8 @@ exports.deleteTask = async (req, res) => {
 
         await Task.findByIdAndDelete(req.params.taskId);
 
+        const assignedUser = task.assignedTo;
+
         if (
             assignedUser &&
             assignedUser.toString() !== req.user._id.toString()
@@ -232,7 +248,7 @@ exports.deleteTask = async (req, res) => {
                 sender: req.user._id,
                 title: "Task Deleted",
                 message: `The task "${task.taskTitle}" assigned to you has been deleted.`,
-                type: "Task",
+                type: "task",
                 entityType: "Task",
                 entityId: task._id,
             });
@@ -251,7 +267,6 @@ exports.deleteTask = async (req, res) => {
         });
     }
 };
-
 
 // Assign Task
 exports.assignTask = async (req, res) => {
@@ -290,7 +305,7 @@ exports.assignTask = async (req, res) => {
                 sender: req.user._id,
                 title: "Task Assigned",
                 message: `You have been assigned task: ${task.taskTitle}`,
-                type: "Task",
+                type: "task",
                 entityType: "Task",
                 entityId: task._id,
             });
@@ -344,7 +359,7 @@ exports.changeTaskStatus = async (req, res) => {
                 sender: req.user._id,
                 title: "Task Status Updated",
                 message: `Task "${task.taskTitle}" status has been changed to ${status}.`,
-                type: "Task",
+                type: "task",
                 entityType: "Task",
                 entityId: task._id,
             });
@@ -395,7 +410,7 @@ exports.changePriority = async (req, res) => {
                 sender: req.user._id,
                 title: "Task Priority Updated",
                 message: `Task "${task.taskTitle}" priority has been changed to ${priority}.`,
-                type: "Task",
+                type: "task",
                 entityType: "Task",
                 entityId: task._id,
             });

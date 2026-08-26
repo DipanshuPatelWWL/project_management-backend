@@ -1,4 +1,6 @@
 const Meeting = require("../models/meeting");
+const sendMeetingInvitationEmail = require("../services/emailService");
+
 
 exports.createMeeting = async (req, res) => {
     try {
@@ -69,52 +71,58 @@ exports.createMeeting = async (req, res) => {
     }
 };
 
-exports.getMeetings = async (req,res) => {
 
-    try { 
-    const meetings = await Meeting.find();
+exports.getMeetings = async (req, res) => {
 
-    return res.status(200).json({
+    try {
+
+        const meetings = await Meeting.find();
+
+        return res.status(200).json({
             success: true,
-            count: companies.length,
-            message: "project  fetched successfully",
-            companies,
+            count: meetings.length,
+            message: "Meetings fetched successfully",
+            meetings,
         });
 
     } catch (error) {
         return res.status(500).json({
             success: false,
-            message: "Failed to fetch project  data",
+            message: "Failed to fetch meeting data",
             error: error.message,
         });
-    
+
     }
 };
 
 
-exports.getMeetingById = async (req,res) => {
-    try{
-      const meeting = await Meeting.findbyId(re.param.meetingId);
+exports.getMeetingById = async (req, res) => {
+    try {
 
-      if(!meeting) {
-        return res.status(400).json({
-        success :false,
-        message : "meeting not found",
-         });
-      }
-      return res.status(200) .json ({
-        success: true,
-        message: "meeting found",
-    });
-     
-    } 
-    catch {
-        return res.status(200) .json ({
-        success: true,
-        message: error.message
+        const meeting = await Meeting.findById(req.params.meetingId);
+
+        if (!meeting) {
+            return res.status(404).json({
+                success: false,
+                message: "Meeting not found",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Meeting found",
+            meeting,
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch meeting",
+            error: error.message
         });
     }
 };
+
 
 exports.updateMeeting = async (req, res) => {
     try {
@@ -189,23 +197,24 @@ exports.updateMeeting = async (req, res) => {
     }
 };
 
+
 exports.deleteMeeting = async (req, res) => {
     try {
 
-        const   meeting = await Meeting.findById(req.params.meetingId);
+        const meeting = await Meeting.findById(req.params.meetingId);
 
         if (!meeting) {
             return res.status(404).json({
                 success: false,
-                message: "meeting not found",
+                message: "Meeting not found",
             });
         }
 
-        await meeting.findByIdAndDelete(req.params.meetingId);
+        await Meeting.findByIdAndDelete(req.params.meetingId);
 
         return res.status(200).json({
             success: true,
-            message: "meeting deleted successfully",
+            message: "Meeting deleted successfully",
         });
 
     } catch (error) {
@@ -251,6 +260,7 @@ exports.addMeetingNotes = async (req, res) => {
         });
     }
 };
+
 
 exports.changeMeetingStatus = async (req, res) => {
     try {

@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const { protect } = require("../middleware/authMiddleware");
 
 const {
     getSuperAdminDashboard,
@@ -18,11 +19,11 @@ router.get("/admin", getAdminDashboard);
 
 router.get("/project-manager", getProjectManagerDashboard);
 
-router.get("/team-lead", getTeamLeadDashboard);
+router.get("/team-lead", protect,getTeamLeadDashboard);
 
-router.get("/developer", getDeveloperDashboard);
+router.get("/developer", protect, getDeveloperDashboard);
 
-router.get("/qa", getQADashboard);
+router.get("/qa", protect,  getQADashboard);
 
 router.get("/client", getClientDashboard);
 

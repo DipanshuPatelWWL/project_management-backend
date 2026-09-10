@@ -76,7 +76,9 @@ exports.getMeetings = async (req, res) => {
 
     try {
 
-        const meetings = await Meeting.find();
+        const meetings = await Meeting.find()
+       .populate("project", "projectName")
+       .populate("participants", "firstName lastName"); 
 
         return res.status(200).json({
             success: true,

@@ -1,3 +1,4 @@
+
 const express = require("express");
 const router = express.Router();
 
@@ -15,10 +16,11 @@ const {
 
 const { protect } = require("../middleware/authMiddleware");
 const { authorize } = require("../middleware/roleMiddleware");
-const upload = require("../middleware/uploadMiddleware");   
+const upload = require("../middleware/uploadMiddleware");
 const { validateRegister } = require("../middleware/validationMiddleware");
 
 // User Management (SuperAdmin / Admin)
+
 
 // Create User
 router.post(
@@ -29,14 +31,18 @@ router.post(
     createUser
 );
 
+
 // Get All Users
 router.get(
     "/",
-   
-     protect,
-     authorize("SuperAdmin", "Admin"),
+    protect,
+    authorize("SuperAdmin", "Admin"),
     getUsers
 );
+
+
+
+
 
 // Get User By ID
 router.get(
@@ -46,6 +52,7 @@ router.get(
     getUserById
 );
 
+
 // Update User
 router.put(
     "/:userId",
@@ -53,6 +60,7 @@ router.put(
     authorize("SuperAdmin", "Admin"),
     updateUser
 );
+
 
 // Change User Status
 router.patch(
@@ -62,6 +70,7 @@ router.patch(
     changeUserStatus
 );
 
+
 // Change User Role
 router.patch(
     "/:userId/role",
@@ -69,6 +78,7 @@ router.patch(
     authorize("SuperAdmin"),
     changeUserRole
 );
+
 
 // Delete User (Soft Delete)
 router.delete(
@@ -78,12 +88,14 @@ router.delete(
     deleteUser
 );
 
+
 // Update Own Profile
 router.put(
     "/profile",
     protect,
     updateProfile
 );
+
 
 // Update Own Profile Image
 router.put(
@@ -94,5 +106,5 @@ router.put(
 );
 
 
-
 module.exports = router;
+

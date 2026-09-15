@@ -3,7 +3,7 @@ const Company = require ("../models/company");
 exports.createCompany = async (req,res) => {
     try {  
     const {
-        companyName,  companyCode,companyLogo,companyType,industry,officialEmail,contactNumber,website,addressLine1,city,state,country,pincode,timeZone,currency,workingDays,officeStartTime,officeEndTime, status,
+        companyName,companyCode,companyLogo,companyType,industry,officialEmail,contactNumber,website,addressLine1,city,state,country,pincode,timeZone,currency,workingDays,officeStartTime,officeEndTime, status,
     } = req.body; 
     
         
@@ -93,30 +93,27 @@ exports.getCompany = async (req, res) => {
 };
 
 
-exports.getCompanyById = async (req,res) => {
-
+exports.getCompanyById = async (req, res) => {
     try {
-       const companies = await company.find( req.param.companyId);
-     
-       if(!companies){ 
-       return res.status(400).json({
-        success :false,
-        message : "company not found",
-         });
-       }
-   
+        const company = await Company.findById(req.params.companyId);
 
-    return res.status(200) .json ({
-        success: true,
-        message: "company found",
-    });
+        if (!company) {
+            return res.status(400).json({
+                success: false,
+                message: "Company not found",
+            });
+        }
 
-    }catch(error) {
-         return res.status(200) .json ({
-        success: true,
-        message: error.message,
-
-    });
+        return res.status(200).json({
+            success: true,
+            message: "Company found",
+            company,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+        });
     }
 };
 

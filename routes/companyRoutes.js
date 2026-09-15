@@ -18,28 +18,28 @@ router.post(
 router.get(
     "/",
     protect,
-    authorize("SuperAdmin","admin"),
+    authorize("SuperAdmin","Admin"),
     getCompany
 );
 
 router.get(
     "/:companyId",
     protect,
-    authorize("SuperAdmin","admin"),
+    authorize("SuperAdmin","Admin"),
     getCompanyById
 );
 
 router.put(
     "/:companyId",
     protect,
-    authorize("SuperAdmin","admin"),
+    authorize("SuperAdmin","Admin"),
     updateCompany
 );
 
 router.delete(
     "/:companyId",
     protect,
-    authorize("SuperAdmin","admin"),
+    authorize("SuperAdmin","Admin"),
     deleteCompany
 );
 

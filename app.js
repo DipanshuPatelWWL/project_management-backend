@@ -34,9 +34,24 @@ const errorHandler = require("./middleware/errorMiddleware");
 // console.log("clientRoute:", typeof clientRoute);
 // console.log("projectRoute:", typeof projectRoute);
 
+const allowedOrigins = (process.env.CLIENT_URL || "http://localhost:5173")
+    .split(",")
+    .map((url) => url.trim().replace(/\/$/, ""));
+
 app.use(
     cors({
-        origin: process.env.CLIENT_URL,
+        origin: (origin, callback) => {
+            if (!origin) return callback(null, true);
+            const normalizedOrigin = origin.replace(/\/$/, "");
+            if (
+                allowedOrigins.includes(normalizedOrigin) ||
+                allowedOrigins.includes("*") ||
+                process.env.NODE_ENV !== "production"
+            ) {
+                return callback(null, true);
+            }
+            return callback(new Error("Not allowed by CORS"));
+        },
         credentials: true,
     })
 );

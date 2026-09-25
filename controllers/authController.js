@@ -4,9 +4,13 @@ const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
 const regex = require("../utils/regexPatterns");
 
+const isProduction = process.env.NODE_ENV === "production";
+
 const cookieOptions = {
     httpOnly: true,
     maxAge: 10 * 24 * 60 * 60 * 1000,
+    sameSite: isProduction ? "none" : "lax",
+    secure: isProduction,
 };
 
 

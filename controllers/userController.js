@@ -655,7 +655,9 @@ exports.updateProfileImage = async (req, res) => {
         }
 
         const imageUrl =
-            `/uploads/${req.file.filename}`;
+            req.file.path && req.file.path.startsWith("http")
+                ? req.file.path
+                : `/uploads/${req.file.filename}`;
 
         const user =
             await User.findByIdAndUpdate(

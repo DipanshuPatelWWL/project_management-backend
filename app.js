@@ -1,4 +1,5 @@
 const express = require("express");
+const path = require("path");
 const cors = require("cors");
 const helmet = require("helmet");
 const compression = require("compression");
@@ -23,6 +24,8 @@ const dashboardRoute = require("./routes/dashboardRoutes");
 const auditLogRoute = require("./routes/auditLogRoutes");
 const searchRoute = require("./routes/searchRoutes");
 const reportRoute = require("./routes/reportRoutes");
+const errorHandler = require("./middleware/errorMiddleware");
+
 
 // Check route imports
 // console.log("authRoute:", typeof authRoute);
@@ -38,13 +41,20 @@ app.use(
     })
 );
 
-app.use(helmet());
+app.use(
+    helmet({
+        crossOriginResourcePolicy: { policy: "cross-origin" },
+    })
+);
 app.use(compression());
 app.use(morgan("dev"));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Serve static uploads
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // =======================
 // API Routes
@@ -61,7 +71,7 @@ app.use("/api/meeting", meetingRoute);
 app.use("/api/document", documentRoute);
 app.use("/api/notifications", notificationRoute);
 app.use("/api/timeLog", timelogRoute);
-app.use("api/dashboard", dashboardRoute);
+app.use("/api/dashboard", dashboardRoute);
 app.use("/api/audit-logs", auditLogRoute);
 app.use("/api/search", searchRoute);
 app.use("/api/reports", reportRoute);
@@ -82,5 +92,6 @@ app.use((req, res) => {
     });
 });
 
+app.use(errorHandler);
 
 module.exports = app;

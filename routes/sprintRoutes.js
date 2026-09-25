@@ -2,9 +2,11 @@ const express = require("express");
 
 const router = express.Router();
 
+const { protect } = require("../middleware/authMiddleware");
 const {
     createSprint,
     getSprints,
+    getSprintById,
     updateSprint,
     deleteSprint,
     startSprint,
@@ -13,19 +15,22 @@ const {
 
 
 
-router.get("/",  getSprints);
+router.get("/",   getSprints);
+router.get("/:sprintId", getSprintById);
+
+router.post("/", protect, createSprint);
 
 
-router.put("/:sprintId",  updateSprint);
+router.put("/:sprintId", protect,  updateSprint);
 
 
-router.delete("/:sprintId", deleteSprint);
+router.delete("/:sprintId", protect,deleteSprint);
 
 
-router.put("/:sprintId/start", startSprint);
+router.put("/:sprintId/start", protect, startSprint);
 
 
-router.put("/:sprintId/complete", completeSprint);
+router.put("/:sprintId/complete", protect,completeSprint);
 
 module.exports = router;
 

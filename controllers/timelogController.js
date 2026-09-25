@@ -1,5 +1,5 @@
 
-const TimeLog = require("../models/timeLog");
+const TimeLog = require("../models/TimeLog");
 
 
 // Create Time Log

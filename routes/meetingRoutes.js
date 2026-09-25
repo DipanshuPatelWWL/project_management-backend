@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const { protect } = require("../middleware/authMiddleware");
 
 const {
     createMeeting,
@@ -13,7 +14,7 @@ const {
 
 
 
-router.post("/", createMeeting);
+router.post("/", protect, createMeeting);
 
 
 router.get("/", getMeetings);
@@ -21,15 +22,15 @@ router.get("/", getMeetings);
 router.get("/:meetingId", getMeetingById);
 
 
-router.put("/:meetingId", updateMeeting);
+router.put("/:meetingId", protect,updateMeeting);
 
 
-router.patch("/:meetingId/status", changeMeetingStatus);
+router.patch("/:meetingId/status",protect, changeMeetingStatus);
 
 
-router.patch("/:meetingId/notes", addMeetingNotes);
+router.patch("/:meetingId/notes", protect, addMeetingNotes);
 
-router.delete("/:meetingId", deleteMeeting);
+router.delete("/:meetingId", protect, deleteMeeting);
 
 
 module.exports = router;

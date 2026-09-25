@@ -1,30 +1,99 @@
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
+const regex = require("../utils/regexPatterns");
 
+// Generate next Employee ID
+const generateEmployeeId = async () => {
+    const users = await User.find({
+        employeeId: { $exists: true, $ne: "" },
+    }).select("employeeId");
+
+    let highestNumber = 0;
+
+    users.forEach((user) => {
+        if (user.employeeId) {
+            const number = parseInt(
+                user.employeeId.replace("EMP", ""),
+                10
+            );
+
+            if (!isNaN(number) && number > highestNumber) {
+                highestNumber = number;
+            }
+        }
+    });
+
+    const nextNumber = highestNumber + 1;
+
+    return `EMP${String(nextNumber).padStart(3, "0")}`;
+};
 
 // Create User
 exports.createUser = async (req, res) => {
     try {
-        const { employeeId, firstName, lastName, email, phone, password, role, company, designation, department, status, } = req.body;
+        const {
+            firstName,
+            lastName,
+            email,
+            phone,
+            password,
+            role,
+            company,
+            designation,
+            department,
+            status,
+            reportingManager,
+            joiningDate,
+            employmentType,
+            workLocation,
+        } = req.body;
 
-
-        if (!employeeId || !firstName || !lastName || !email || !phone || !password || !role || !company || !designation || !department) {
+        if (
+            !firstName ||
+            !lastName ||
+            !email ||
+            !phone ||
+            !password ||
+            !role ||
+            !company ||
+            !designation ||
+            !department
+        ) {
             return res.status(400).json({
                 success: false,
                 message: "Please fill all required fields",
             });
         }
 
-        // Check if employee ID already exists
-        const existingEmployee = await User.findOne({ employeeId });
-        if (existingEmployee) {
-            return res.status(400).json({
-                success: false, message: "Employee already exists",
+        if (status && status !== "Active" && req.user.role !== "SuperAdmin") {
+            return res.status(403).json({
+                success: false,
+                message: "Only SuperAdmin can change the status of a user",
             });
         }
 
-        // Check if email already exists
         const normalizedEmail = email.trim().toLowerCase();
+
+        if (!regex.email.test(normalizedEmail)) {
+            return res.status(400).json({
+                success: false,
+                message: "Please enter a valid email address",
+            });
+        }
+
+        if (!regex.phone.test(phone.trim())) {
+            return res.status(400).json({
+                success: false,
+                message: "Phone number must be a valid 10-digit number starting with 6, 7, 8, or 9",
+            });
+        }
+
+        if (!regex.password.test(password)) {
+            return res.status(400).json({
+                success: false,
+                message: "Password must be at least 8 characters long with uppercase, lowercase, number, and special character",
+            });
+        }
 
         const existingEmail = await User.findOne({
             email: normalizedEmail,
@@ -37,8 +106,9 @@ exports.createUser = async (req, res) => {
             });
         }
 
-        // Check if phone already exists
-        const existingPhone = await User.findOne({ phone });
+        const existingPhone = await User.findOne({
+            phone,
+        });
 
         if (existingPhone) {
             return res.status(400).json({
@@ -47,10 +117,14 @@ exports.createUser = async (req, res) => {
             });
         }
 
-        // Hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
+        // Generate Employee ID only after validation
+        const employeeId = await generateEmployeeId();
 
-        // Create user
+        const hashedPassword = await bcrypt.hash(
+            password,
+            10
+        );
+
         const user = await User.create({
             employeeId,
             firstName,
@@ -63,19 +137,24 @@ exports.createUser = async (req, res) => {
             designation,
             department,
             status: status || "Active",
-            reportingManager,
-            joiningDate,
+            reportingManager:
+                reportingManager || req.user._id,
+            joiningDate:
+                joiningDate || new Date(),
             employmentType,
             workLocation,
+            isDeleted: false,
             createdBy: req.user._id,
             updatedBy: req.user._id,
         });
 
-        // password wapis nahi bhejna 
-        const createdUser = await User.findById(user._id).select("-password");
+        const createdUser =
+            await User.findById(user._id)
+                .select("-password");
 
         return res.status(201).json({
-            success: true, message: "User created successfully",
+            success: true,
+            message: "User created successfully",
             user: createdUser,
         });
     } catch (error) {
@@ -87,55 +166,60 @@ exports.createUser = async (req, res) => {
     }
 };
 
-
-
-
-
 // Get All Users
 exports.getUsers = async (req, res) => {
     try {
         const users = await User.find({
             isDeleted: false,
-        }).select("-password");
+        })
+            .select("-password")
+            .populate("company", "companyName");
+
+        const nextEmployeeId =
+            await generateEmployeeId();
 
         return res.status(200).json({
             success: true,
             count: users.length,
             users,
+            nextEmployeeId,
         });
-
     } catch (error) {
         return res.status(500).json({
-            success: false, message: "Failed to fetch users",
+            success: false,
+            message: "Failed to fetch users",
         });
     }
 };
 
-// get user by  Id 
+// Get User By ID
 exports.getUserById = async (req, res) => {
     try {
         const user = await User.findOne({
             _id: req.params.userId,
             isDeleted: false,
-        }).select("-password");
-        if (!user)
-            return res.status(400).json({ success: false, message: "user do not exists", }
-            );
+        })
+            .select("-password")
+            .populate("company", "companyName");
+
+        if (!user) {
+            return res.status(400).json({
+                success: false,
+                message: "user do not exists",
+            });
+        }
+
         return res.status(200).json({
             success: true,
             user,
         });
-
+    } catch (error) {
+        return res.status(400).json({
+            success: false,
+            message: error.message,
+        });
     }
-    catch (error) {
-        return res.status(400).json({ success: false, message: error.message }
-
-        );
-
-    }
-
 };
-
 
 // Update User
 exports.updateUser = async (req, res) => {
@@ -170,29 +254,35 @@ exports.updateUser = async (req, res) => {
             });
         }
 
-        // Check employee ID
-        if (employeeId) {
-            const existingEmployee = await User.findOne({
-                employeeId,
-                _id: { $ne: req.params.userId },
+        // Employee ID can never be changed
+        if (
+            employeeId &&
+            employeeId !== user.employeeId
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Employee ID cannot be changed",
             });
+        }
 
-            if (existingEmployee) {
+        if (email) {
+            const normalizedEmail =
+                email.trim().toLowerCase();
+
+            if (!regex.email.test(normalizedEmail)) {
                 return res.status(400).json({
                     success: false,
-                    message: "Employee ID already exists",
+                    message: "Please enter a valid email address",
                 });
             }
 
-            user.employeeId = employeeId;
-        }
-
-        // Check email
-        if (email) {
-            const existingEmail = await User.findOne({
-                email: email.toLowerCase(),
-                _id: { $ne: req.params.id },
-            });
+            const existingEmail =
+                await User.findOne({
+                    email: normalizedEmail,
+                    _id: {
+                        $ne: req.params.userId,
+                    },
+                });
 
             if (existingEmail) {
                 return res.status(400).json({
@@ -201,15 +291,24 @@ exports.updateUser = async (req, res) => {
                 });
             }
 
-            user.email = email.trim().toLowerCase();
+            user.email = normalizedEmail;
         }
 
-        // Check phone
         if (phone) {
-            const existingPhone = await User.findOne({
-                phone,
-                _id: { $ne: req.params.id },
-            });
+            if (!regex.phone.test(phone.trim())) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Phone number must be a valid 10-digit number starting with 6, 7, 8, or 9",
+                });
+            }
+
+            const existingPhone =
+                await User.findOne({
+                    phone,
+                    _id: {
+                        $ne: req.params.userId,
+                    },
+                });
 
             if (existingPhone) {
                 return res.status(400).json({
@@ -221,18 +320,73 @@ exports.updateUser = async (req, res) => {
             user.phone = phone;
         }
 
-        // Update remaining fields
-        if (firstName) user.firstName = firstName;
-        if (lastName) user.lastName = lastName;
-        if (role) user.role = role;
-        if (company) user.company = company;
-        if (designation) user.designation = designation;
-        if (department) user.department = department;
-        if (status) user.status = status;
+        if (firstName) {
+            user.firstName = firstName;
+        }
 
-        // Update password if provided
+        if (lastName) {
+            user.lastName = lastName;
+        }
+
+        if (role) {
+            user.role = role;
+        }
+
+        if (company) {
+            user.company = company;
+        }
+
+        if (designation) {
+            user.designation = designation;
+        }
+
+        if (department) {
+            user.department = department;
+        }
+
+        if (status && status !== user.status) {
+            if (req.user.role !== "SuperAdmin") {
+                return res.status(403).json({
+                    success: false,
+                    message: "Only SuperAdmin can change the status of a user",
+                });
+            }
+            if (!["Active", "Inactive", "OnLeave"].includes(status)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid status value",
+                });
+            }
+            user.status = status;
+        }
+
+        if (reportingManager) {
+            user.reportingManager =
+                reportingManager;
+        }
+
+        if (joiningDate) {
+            user.joiningDate = joiningDate;
+        }
+
+        if (employmentType) {
+            user.employmentType =
+                employmentType;
+        }
+
+        if (workLocation) {
+            user.workLocation = workLocation;
+        }
+
         if (password) {
-            user.password = await bcrypt.hash(password, 10);
+            if (!regex.password.test(password)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Password must be at least 8 characters long with uppercase, lowercase, number, and special character",
+                });
+            }
+            user.password =
+                await bcrypt.hash(password, 10);
         }
 
         user.updatedBy = req.user._id;
@@ -246,7 +400,6 @@ exports.updateUser = async (req, res) => {
             message: "User updated successfully",
             user,
         });
-
     } catch (error) {
         return res.status(500).json({
             success: false,
@@ -256,9 +409,8 @@ exports.updateUser = async (req, res) => {
     }
 };
 
-
+// Soft Delete User
 exports.deleteUser = async (req, res) => {
-
     try {
         const user = await User.findOne({
             _id: req.params.userId,
@@ -266,8 +418,10 @@ exports.deleteUser = async (req, res) => {
         });
 
         if (!user) {
-            return res.status(400).json({ success: false, message: "no user found" });
-
+            return res.status(400).json({
+                success: false,
+                message: "No user found",
+            });
         }
 
         user.isDeleted = true;
@@ -275,16 +429,17 @@ exports.deleteUser = async (req, res) => {
 
         await user.save();
 
-        return res.status(200).json({ success: true, message: "User deleted successfully" });
+        return res.status(200).json({
+            success: true,
+            message: "User deleted successfully",
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+        });
     }
-    catch (error) {
-
-        return res.status(401).json({ success: false, message: error.message });
-
-    }
-
 };
-
 
 // Update Profile
 exports.updateProfile = async (req, res) => {
@@ -300,7 +455,9 @@ exports.updateProfile = async (req, res) => {
             department,
         } = req.body;
 
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(
+            req.user._id
+        );
 
         if (!user) {
             return res.status(404).json({
@@ -309,12 +466,16 @@ exports.updateProfile = async (req, res) => {
             });
         }
 
-        // Check email
         if (email) {
-            const existingEmail = await User.findOne({
-                email: email.toLowerCase(),
-                _id: { $ne: req.user._id },
-            });
+            const existingEmail =
+                await User.findOne({
+                    email: email
+                        .trim()
+                        .toLowerCase(),
+                    _id: {
+                        $ne: req.user._id,
+                    },
+                });
 
             if (existingEmail) {
                 return res.status(400).json({
@@ -323,15 +484,19 @@ exports.updateProfile = async (req, res) => {
                 });
             }
 
-            user.email = email.toLowerCase();
+            user.email = email
+                .trim()
+                .toLowerCase();
         }
 
-        // Check phone
         if (phone) {
-            const existingPhone = await User.findOne({
-                phone,
-                _id: { $ne: req.user._id },
-            });
+            const existingPhone =
+                await User.findOne({
+                    phone,
+                    _id: {
+                        $ne: req.user._id,
+                    },
+                });
 
             if (existingPhone) {
                 return res.status(400).json({
@@ -343,15 +508,31 @@ exports.updateProfile = async (req, res) => {
             user.phone = phone;
         }
 
-        if (firstName) user.firstName = firstName;
-        if (lastName) user.lastName = lastName;
-        if (company) user.company = company;
-        if (designation) user.designation = designation;
-        if (department) user.department = department;
+        if (firstName) {
+            user.firstName = firstName;
+        }
 
-        // Update password if provided
+        if (lastName) {
+            user.lastName = lastName;
+        }
+
+        if (company) {
+            user.company = company;
+        }
+
+        if (designation) {
+            user.designation =
+                designation;
+        }
+
+        if (department) {
+            user.department =
+                department;
+        }
+
         if (password) {
-            user.password = await bcrypt.hash(password, 10);
+            user.password =
+                await bcrypt.hash(password, 10);
         }
 
         user.updatedBy = req.user._id;
@@ -365,7 +546,6 @@ exports.updateProfile = async (req, res) => {
             message: "Profile updated successfully",
             user,
         });
-
     } catch (error) {
         return res.status(500).json({
             success: false,
@@ -375,11 +555,25 @@ exports.updateProfile = async (req, res) => {
     }
 };
 
-//userStatus
+// Change User Status
 exports.changeUserStatus = async (req, res) => {
     try {
+        if (req.user.role !== "SuperAdmin") {
+            return res.status(403).json({
+                success: false,
+                message: "Only SuperAdmin can change the status of a user",
+            });
+        }
+
         const { userId } = req.params;
         const { status } = req.body;
+
+        if (!status || !["Active", "Inactive", "OnLeave"].includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid status (Active, Inactive, OnLeave) is required",
+            });
+        }
 
         const user = await User.findOne({
             _id: userId,
@@ -398,19 +592,24 @@ exports.changeUserStatus = async (req, res) => {
 
         await user.save();
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             message: "Status updated",
+            user: {
+                _id: user._id,
+                employeeId: user.employeeId,
+                status: user.status,
+            },
         });
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: "Something went wrong",
         });
     }
 };
-//userRole
 
+// Change User Role
 exports.changeUserRole = async (req, res) => {
     try {
         const { userId } = req.params;
@@ -433,9 +632,56 @@ exports.changeUserRole = async (req, res) => {
 
         await user.save();
 
-        res.status(200).json({ success: true, message: "Role updated", });
+        return res.status(200).json({
+            success: true,
+            message: "Role updated",
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Something went wrong",
+        });
     }
-    catch (error) {
-        res.status(500).json({ success: false, message: "Something went wrong", });
+};
+
+// Update Profile Image
+exports.updateProfileImage = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: "No image uploaded",
+            });
+        }
+
+        const imageUrl =
+            `/uploads/${req.file.filename}`;
+
+        const user =
+            await User.findByIdAndUpdate(
+                req.user._id,
+                {
+                    profileImage: imageUrl,
+                },
+                {
+                    new: true,
+                }
+            )
+                .select("-password")
+                .populate("company", "companyName companyCode");
+
+        return res.status(200).json({
+            success: true,
+            message:
+                "Profile image updated successfully",
+            user,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message:
+                "Failed to update profile image",
+            error: error.message,
+        });
     }
 };

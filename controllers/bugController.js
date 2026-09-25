@@ -27,6 +27,9 @@ exports.createBug = async (req, res) => {
             });
         }
 
+         const attachmentUrls = req.files ? req.files.map(file => `/uploads/${file.filename}`) : [];
+
+
         const bug = await Bug.create({
             bugTitle,
             description,
@@ -43,6 +46,7 @@ exports.createBug = async (req, res) => {
             attachments,
             createdBy: req.user._id,
             updatedBy: req.user._id,
+            attachments: attachmentUrls,
         });
 
         return res.status(201).json({

@@ -1,5 +1,5 @@
 
-const Document = require("../models/document");
+const Document = require("../models/Document");
 
 exports.createDocument = async(req,res) => {
 
@@ -68,7 +68,7 @@ exports.createDocument = async(req,res) => {
 exports.getDocuments = async(req,res) => {
      
     try { 
-
+         
         const documents = await Document.find();
 
         return res.status(200).json({

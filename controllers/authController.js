@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
+const regex = require("../utils/regexPatterns");
 
 const cookieOptions = {
     httpOnly: true,
@@ -77,7 +78,7 @@ exports.login = async (req, res) => {
             });
         }
 
-        const user = await User.findOne({ email: email.toLowerCase() });
+        const user = await User.findOne({ email: email.toLowerCase() }).select("+password");;
 
         if (!user) {
             return res.status(401).json({
@@ -105,6 +106,7 @@ exports.login = async (req, res) => {
             res.cookie("token", token, cookieOptions).status(200).json({
                 success: true,
                 message: 'User Logged in successfully',
+                token,
                 user: {
                     id: user._id,
                     employeeId: user.employeeId,
@@ -175,10 +177,10 @@ exports.changePassword = async (req, res) => {
             });
         }
 
-        if (newPassword.length < 6) {
+        if (!regex.password.test(newPassword)) {
             return res.status(400).json({
                 success: false,
-                message: 'New password must be at least 6 characters long',
+                message: 'Password must be at least 8 characters long with uppercase, lowercase, number, and special character',
             });
         }
 

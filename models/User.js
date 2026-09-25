@@ -9,6 +9,13 @@ const userSchema = new mongoose.Schema(
             trim: true,
         },
 
+
+
+        isDeleted: {
+         type: Boolean,
+         default: false,
+          },
+
         firstName: {
             type: String,
             required: true,

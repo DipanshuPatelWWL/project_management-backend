@@ -6,6 +6,7 @@ const { protect } = require("../middleware/authMiddleware");
 const {
     createSprint,
     getSprints,
+    getSprintById,
     updateSprint,
     deleteSprint,
     startSprint,
@@ -15,6 +16,7 @@ const {
 
 
 router.get("/",   getSprints);
+router.get("/:sprintId", getSprintById);
 
 router.post("/", protect, createSprint);
 

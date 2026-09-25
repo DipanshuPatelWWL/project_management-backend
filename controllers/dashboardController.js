@@ -41,11 +41,14 @@ exports.getSuperAdminDashboard = async (req, res) => {
         });
 
         // Total Sprints
-        const totalSprints = await Sprint.countDocuments();
+        const totalSprints = await Sprint.countDocuments({
+            isDeleted: false,
+        });
 
         // Active Sprints
         const activeSprints = await Sprint.countDocuments({
             status: "active",
+            isDeleted: false,
         });
 
         // Total Tasks
@@ -183,6 +186,7 @@ exports.getProjectManagerDashboard = async (req, res) => {
         const activeSprints = await Sprint.countDocuments({
             project: projectId,
             status: "active",
+            isDeleted: false,
         });
 
         // Team members
@@ -248,6 +252,7 @@ exports.getTeamLeadDashboard = async (req, res) => {
         // My Sprint
         const mySprint = await Sprint.countDocuments({
             status: "active",
+            isDeleted: false,
         });
 
         // Pending Review

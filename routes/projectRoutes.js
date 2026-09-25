@@ -9,26 +9,28 @@ const {
     updateProject,
     deleteProject,
     assignProjectManager,
-    assignTeamLead, 
+    assignTeamLead,
     assignMembers,
 } = require("../controllers/projectController");
 
 
+router.post("/", protect, createProject);
 
 
-router.post("/", protect ,createProject);
+router.get("/", protect, getProjects);
 
 
-router.get("/", getProjects);
-
-
-router.get("/:projectId",  getProjectById);
+router.get("/:projectId", protect, getProjectById);
 
 
 router.put("/:projectId", protect, updateProject);
 
 
-router.delete("/:projectId",  deleteProject);
+// FIX: protect was missing here - this let anyone delete any project
+// with no login at all, and would have crashed once soft delete needed
+// req.user._id for updatedBy.
+
+router.delete("/:projectId", protect, deleteProject);
 
 
 router.put("/:projectId/assign-manager", protect, assignProjectManager);
@@ -37,7 +39,6 @@ router.put("/:projectId/assign-manager", protect, assignProjectManager);
 router.put("/:projectId/assign-teamlead", protect, assignTeamLead);
 
 
-router.put("/:projectId/assign-members",protect ,assignMembers);
+router.put("/:projectId/assign-members", protect, assignMembers);
 
 module.exports = router;
-

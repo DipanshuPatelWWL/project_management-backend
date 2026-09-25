@@ -32,6 +32,7 @@ exports.projectReport = async (req, res) => {
 
         const sprints = await Sprint.find({
             project: projectId,
+            isDeleted: false,
         });
 
         const bugs = await Bug.find({
@@ -59,6 +60,7 @@ exports.projectReport = async (req, res) => {
         const completedSprints = await Sprint.countDocuments({
             project: projectId,
             status: "Completed",
+            isDeleted: false,
         });
 
         const totalBugs = bugs.length;
@@ -127,7 +129,10 @@ exports.sprintReport = async (req, res) => {
                 message: "Sprint ID is required",
             });
         }
-        const sprint = await Sprint.findById(sprintId);
+        const sprint = await Sprint.findOne({
+            _id: sprintId,
+            isDeleted: false,
+        });
 
         if (!sprint) {
             return res.status(404).json({

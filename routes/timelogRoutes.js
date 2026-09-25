@@ -10,7 +10,7 @@ const {
     deleteTimeLog,
     weeklySummary,
     monthlySummary,
-} = require("../controllers/timeLogController");
+} = require("../controllers/timelogController");
 
 
 router.post("/", protect ,createTimeLog);

@@ -66,7 +66,7 @@ router.put(
 router.patch(
     "/:userId/status",
     protect,
-    authorize("SuperAdmin", "Admin"),
+    authorize("SuperAdmin"),
     changeUserStatus
 );
 

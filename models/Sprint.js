@@ -2,68 +2,86 @@ const mongoose = require("mongoose");
 
 const SprintSchema = new mongoose.Schema(
     {
-        sprintName : {
-            type :String,
-            trim : true,
+        isDeleted: {
+            type: Boolean,
+            default: false,
         },
-       sprintgoal:{
-            type : String,
-            trim : true,
+
+        sprintId: {
+            type: String,
+            unique: true,
+            sparse: true,
+            uppercase: true,
+            trim: true,
         },
-         
-        project : {
-            type :  mongoose.Schema.Types.ObjectId,
+
+        sprintName: {
+            type: String,
+            trim: true,
+        },
+
+        sprintgoal: {
+            type: String,
+            trim: true,
+        },
+
+        project: {
+            type: mongoose.Schema.Types.ObjectId,
             ref: "Project",
-            trim :true,
-       },
+        },
 
-       startDate : {
-            type : Date,
-            trim :true,
+        startDate: {
+            type: Date,
         },
-        endDate : {
-            type : Date,
-            trim:true,
+
+        endDate: {
+            type: Date,
         },
-        status:{
-            type :String,
-            enum :["active" ,"completed","cancelled","planning"],
-            default:"planning",
+
+        status: {
+            type: String,
+            enum: ["active", "completed", "cancelled", "planning"],
+            default: "planning",
         },
-        progress :{
-            type : Number,
-            min : 0,
+
+        progress: {
+            type: Number,
+            min: 0,
             max: 100,
-            default : 0,
+            default: 0,
+        },
 
+        totalTasks: {
+            type: Number,
+            min: 0,
         },
-        totalTasks :{
-            type : Number,
-            min : 0,
+
+        completedTasks: {
+            type: Number,
+            min: 0,
         },
-        completedTasks :{
-            type : Number,  
-            trim : true,
+
+        totalStoryPoints: {
+            type: Number,
+            min: 0,
         },
-        totalStoryPoints : {
-            type : Number,
-            
+
+        completedStoryPoints: {
+            type: Number,
+            min: 0,
         },
-        completedStoryPoints :{
-            type : Number,
-        },
+
         createdBy: {
-            type : mongoose.Schema.Types.ObjectId,
-            ref :"User",
-        },
-        updatedBy:{
-            type : mongoose.Schema.Types.ObjectId,
-            ref : "User",
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
         },
 
+        updatedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+        },
     },
+    { timestamps: true }
+);
 
- {timeStamps :true}
-    );
-    module.exports = mongoose.model("Sprint", SprintSchema);
-    
+module.exports = mongoose.model("Sprint", SprintSchema);

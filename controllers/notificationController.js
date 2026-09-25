@@ -1,4 +1,4 @@
-const Notification = require("../models/notification");
+const Notification = require("../models/Notification");
 const { sendNotificationEmail } = require("../services/emailService");
 // Create Notification
 exports.createNotification = async(req, res) => {

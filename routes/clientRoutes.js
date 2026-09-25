@@ -13,6 +13,6 @@ router.post("/", protect, createClient);
 router.get("/", getClient);
 router.get("/:clientId", getClientById);
 router.put("/:clientId", protect, updateClient);
-router.delete("/:clientId", deleteClient);
+router.delete("/:clientId", protect,deleteClient);
 
 module.exports = router;

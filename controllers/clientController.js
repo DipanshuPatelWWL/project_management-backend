@@ -1,29 +1,100 @@
-const Client = require("../models/client");
+const Client = require("../models/Client");
+const regex = require("../utils/regexPatterns");
+
+// Generate permanent sequential Client ID.
+// Soft-deleted clients are included in the scan so IDs are never reused -
+// same approach as generateCompanyId in companyController.js.
+const generateClientId = async () => {
+    const clients = await Client.find({
+        clientId: { $exists: true, $ne: "" },
+    }).select("clientId");
+
+    let highestNumber = 0;
+
+    clients.forEach((c) => {
+        if (c.clientId) {
+            const number = parseInt(c.clientId.replace("CLT", ""), 10);
+
+            if (!isNaN(number) && number > highestNumber) {
+                highestNumber = number;
+            }
+        }
+    });
+
+    const nextNumber = highestNumber + 1;
+
+    return `CLT${String(nextNumber).padStart(3, "0")}`;
+};
 
 exports.createClient = async (req, res) => {
     try {
-        const {ClientName,
+        const {
+            ClientName,
             company,
             email,
             phone,
             designation,
             address,
-             status,
-             } = 
-        req.body;
+            country,
+            city,
+            state,
+            pincode,
+            status,
+        } = req.body;
 
-        // Check required fields
-        if (!ClientName || !company || !phone || !address) {
+        const missingFields = [];
+        if (!ClientName || !String(ClientName).trim()) missingFields.push("Client Name");
+        if (!company || !String(company).trim()) missingFields.push("Company");
+        if (!phone || !String(phone).trim()) missingFields.push("Phone");
+        if (!address || !String(address).trim()) missingFields.push("Address");
+        if (!country || !String(country).trim()) missingFields.push("Country");
+        if (!city || !String(city).trim()) missingFields.push("City");
+        if (!state || !String(state).trim()) missingFields.push("State");
+        if (!pincode || !String(pincode).trim()) missingFields.push("Pincode");
+
+        if (missingFields.length > 0) {
             return res.status(400).json({
                 success: false,
-                message: "Please fill all required fields",
+                message:
+                    missingFields.length === 1
+                        ? `${missingFields[0]} is required`
+                        : `Please fill the required field(s): ${missingFields.join(", ")}`,
             });
         }
 
-        // Check email
+        if (!regex.phone.test(phone.trim())) {
+            return res.status(400).json({
+                success: false,
+                message: "Phone number must be a valid 10-digit number starting with 6, 7, 8, or 9",
+            });
+        }
+
+        if (email && email.trim() && !regex.email.test(email.trim().toLowerCase())) {
+            return res.status(400).json({
+                success: false,
+                message: "Please enter a valid email address",
+            });
+        }
+
+        if (pincode) {
+            const isIndia = !country || country.trim().toLowerCase() === "india";
+            if (isIndia && !regex.pincode.test(pincode.trim())) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Pincode must be a valid 6-digit postal code for India",
+                });
+            } else if (!isIndia && !/^[a-zA-Z0-9\s-]{3,10}$/.test(pincode.trim())) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid postal code format",
+                });
+            }
+        }
+
         if (email) {
             const existingEmail = await Client.findOne({
                 email: email.toLowerCase(),
+                isDeleted: false,
             });
 
             if (existingEmail) {
@@ -34,9 +105,9 @@ exports.createClient = async (req, res) => {
             }
         }
 
-        // Check phone
         const existingPhone = await Client.findOne({
             phone,
+            isDeleted: false,
         });
 
         if (existingPhone) {
@@ -46,14 +117,23 @@ exports.createClient = async (req, res) => {
             });
         }
 
+        // Generate permanent Client ID only after validation
+        const clientId = await generateClientId();
+
         const client = await Client.create({
+            clientId,
             ClientName,
             company,
             email: email ? email.toLowerCase() : undefined,
             phone,
             designation,
             address,
+            country: country ? country.trim() : "India",
+            city,
+            state,
+            pincode,
             status,
+            isDeleted: false,
             createdBy: req.user._id,
             updatedBy: req.user._id,
         });
@@ -63,8 +143,8 @@ exports.createClient = async (req, res) => {
             message: "Client created successfully",
             client,
         });
-
     } catch (error) {
+        console.error(error);
         return res.status(500).json({
             success: false,
             message: "Failed to create client",
@@ -73,55 +153,60 @@ exports.createClient = async (req, res) => {
     }
 };
 
-exports.getClient = async (req,res) => { 
- 
+exports.getClient = async (req, res) => {
     try {
-        const client = await Client.find();
-            return res.status(500).json({
-            success: true,
-            message: "clients found",
-            clients: client
-    
+        // Only active (non-deleted) clients are displayed
+        const clients = await Client.find({
+            isDeleted: false,
         });
-         
 
+        // Preview of the next Client ID, without incrementing anything
+        const nextClientId = await generateClientId();
+
+        return res.status(200).json({
+            success: true,
+            message: "Clients found",
+            clients,
+            nextClientId,
+        });
     } catch (error) {
-          return res.status(200).json({
+        console.error(error);
+        return res.status(500).json({
             success: false,
-            message: "no client available",
+            message: "Failed to fetch clients",
             error: error.message,
         });
     }
-
 };
 
-exports.getClientById = async (req,res) => {
-
+exports.getClientById = async (req, res) => {
     try {
-        const client = await Client.findById(req.param.id);
+        const client = await Client.findOne({
+            _id: req.params.clientId,
+            isDeleted: false,
+        });
 
         if (!client) {
-            return res.status(400).json({
+            return res.status(404).json({
                 success: false,
-                message:"client doesn't exists"
+                message: "Client doesn't exist",
             });
         }
-          return res.status(200).json({
-                success: false,
-                message:"client exists"
-            });
 
-
-
-    } catch {
-         return res.status(200).json({
+        return res.status(200).json({
+            success: true,
+            message: "Client found",
+            client,
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
             success: false,
-            message: "no client available",
+            message: "Failed to fetch client",
             error: error.message,
-
-    });
-}
-} ;
+        });
+    }
+};
 
 exports.updateClient = async (req, res) => {
     try {
@@ -132,10 +217,17 @@ exports.updateClient = async (req, res) => {
             phone,
             designation,
             address,
+            country,
+            city,
+            state,
+            pincode,
             status,
         } = req.body;
 
-        const client = await Client.findById(req.params.clientId);
+        const client = await Client.findOne({
+            _id: req.params.clientId,
+            isDeleted: false,
+        });
 
         if (!client) {
             return res.status(404).json({
@@ -144,10 +236,17 @@ exports.updateClient = async (req, res) => {
             });
         }
 
-        // Check Email
         if (email) {
+            if (!regex.email.test(email.trim().toLowerCase())) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Please enter a valid email address",
+                });
+            }
+
             const existingEmail = await Client.findOne({
                 email: email.toLowerCase(),
+                isDeleted: false,
                 _id: { $ne: req.params.clientId },
             });
 
@@ -161,10 +260,17 @@ exports.updateClient = async (req, res) => {
             client.email = email.toLowerCase();
         }
 
-        // Check Phone
         if (phone) {
+            if (!regex.phone.test(phone.trim())) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Phone number must be a valid 10-digit number starting with 6, 7, 8, or 9",
+                });
+            }
+
             const existingPhone = await Client.findOne({
                 phone,
+                isDeleted: false,
                 _id: { $ne: req.params.clientId },
             });
 
@@ -178,24 +284,43 @@ exports.updateClient = async (req, res) => {
             client.phone = phone;
         }
 
-        // Update remaining fields
+        if (pincode) {
+            const checkCountry = country || client.country || "India";
+            const isIndia = checkCountry.trim().toLowerCase() === "india";
+            if (isIndia && !regex.pincode.test(pincode.trim())) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Pincode must be a valid 6-digit postal code for India",
+                });
+            } else if (!isIndia && !/^[a-zA-Z0-9\s-]{3,10}$/.test(pincode.trim())) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid postal code format",
+                });
+            }
+            client.pincode = pincode;
+        }
+
         if (ClientName) client.ClientName = ClientName;
         if (company) client.company = company;
-        if (designation) client.designation = designation;
+        if (designation !== undefined) client.designation = designation;
         if (address) client.address = address;
+        if (country) client.country = country;
+        if (city) client.city = city;
+        if (state) client.state = state;
         if (status) client.status = status;
 
         client.updatedBy = req.user._id;
 
-        await client.save();
+        await client.save({ validateModifiedOnly: true });
 
         return res.status(200).json({
             success: true,
             message: "Client updated successfully",
             client,
         });
-
     } catch (error) {
+        console.error(error);
         return res.status(500).json({
             success: false,
             message: "Failed to update client",
@@ -206,21 +331,30 @@ exports.updateClient = async (req, res) => {
 
 exports.deleteClient = async (req, res) => {
     try {
-        const company = await Client.findByIdAndDelete(req.params.ClientId);
+        // Soft delete instead of permanently deleting the document
+        const client = await Client.findOne({
+            _id: req.params.clientId,
+            isDeleted: false,
+        });
 
-        if (!Client) {
+        if (!client) {
             return res.status(404).json({
                 success: false,
                 message: "Client not found",
             });
         }
 
+        client.isDeleted = true;
+        client.updatedBy = req.user._id;
+
+        await client.save({ validateModifiedOnly: true });
+
         return res.status(200).json({
             success: true,
             message: "Client deleted successfully",
         });
-
     } catch (error) {
+        console.error(error);
         return res.status(500).json({
             success: false,
             message: "Failed to delete client",

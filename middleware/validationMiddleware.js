@@ -56,7 +56,7 @@ exports.validateRegister = (req, res, next) => {
     }
 
     if (!regex.password.test(password)) {
-        errors.push("Password must be at least 6 characters and include a letter and a number");
+        errors.push("Password must be at least 8 characters long and include an uppercase letter, lowercase letter, number, and special character");
     }
 
     if (errors.length > 0) {

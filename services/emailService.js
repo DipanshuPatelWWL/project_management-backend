@@ -5,7 +5,8 @@ exports.sendWelcomeEmail = async (email,name) => {
     try {
         const userEmail = email;
         const userName = name;
-
+    
+    
         const mailOptions = {
             from: process.env.EMAIL_USER,
             to: userEmail,
@@ -22,6 +23,7 @@ exports.sendWelcomeEmail = async (email,name) => {
         console.error ("Error sending welcome email:", error.message);
     }
 };
+
 
 exports.sendPasswordResetEmail = async (user, resetToken) => {
     try {

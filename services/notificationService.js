@@ -7,51 +7,39 @@ exports.sendNotification = async ({
     title,
     message,
     type,
+    project = null,
     entityType = null,
     entityId = null,
-    
 }) => {
-
     try {
-
         const notification = await Notification.create({
             receiver,
             sender,
             title,
             message,
             type,
+            project,
             entityType,
             entityId,
             isRead: false,
         });
 
-        const populatedNotification =
-            await Notification.findById(
-                notification._id
-            )
-                .populate(
-                    "sender",
-                    "firstName lastName profileImage"
-                )
-                .populate(
-                    "receiver",
-                    "firstName lastName profileImage"
-                );
+        const populatedNotification = await Notification.findById(notification._id)
+            .populate("sender", "firstName lastName profileImage employeeId")
+            .populate("receiver", "firstName lastName profileImage employeeId")
+            .populate("project", "projectName projectId");
 
-        const io = getIO();
+        try {
+            const io = getIO();
+            const receiverRoom = `user:${receiver}`;
+            io.to([receiverRoom, "superadmin"]).emit("newNotification", populatedNotification);
+        } catch (socketErr) {
+            console.error("Socket emit notification error:", socketErr.message);
+        }
 
-        const receiverRoom =
-            `user:${receiver}`;
-        io.to(receiverRoom).emit(
-            "newNotification",
-            populatedNotification
-        );
         return populatedNotification;
     } catch (error) {
-        console.error(
-            "Notification Service Error:",
-            error.message
-        );
-        throw error;
+        console.error("Notification Service Error:", error.message);
+        return null;
     }
 };

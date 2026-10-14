@@ -91,6 +91,13 @@ const initializeSocket = (server) => {
             `User joined room: ${userRoom}`
         );
 
+        if (socket.user.role && socket.user.role.toLowerCase() === "superadmin") {
+            socket.join("superadmin");
+            console.log(
+                `SuperAdmin ${socket.user.firstName} joined 'superadmin' room`
+            );
+        }
+
 
         socket.on("joinProject", (projectId) => {
 

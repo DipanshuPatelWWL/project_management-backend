@@ -14,19 +14,19 @@ const {
 } = require("../controllers/notificationController");
 
 
-router.post("/", createNotification);
+router.post("/", protect, createNotification);
 
-router.get("/", getNotification);
+router.get("/", protect, getNotification);
 
-router.get("/:notificationId", getNotificationById);
+router.get("/:notificationId", protect, getNotificationById);
 
-router.patch("/read-all", markAllAsRead);
+router.patch("/read-all", protect, markAllAsRead);
 
-router.patch("/:notificationId/read", markAsRead);
+router.patch("/:notificationId/read", protect, markAsRead);
 
 router.delete("/:notificationId", protect, deleteNotification);
 
-router.delete("/",protect , deleteAllNotifications);
+router.delete("/", protect, deleteAllNotifications);
 
 
 module.exports = router;

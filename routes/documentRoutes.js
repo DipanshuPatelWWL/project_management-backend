@@ -5,6 +5,7 @@ const { protect } = require("../middleware/authMiddleware");
 const {
     createDocument,
     getDocuments,
+    getNextDocumentId,
     getDocumentById,
     updateDocument,
     deleteDocument,
@@ -19,6 +20,8 @@ router.post("/", protect ,createDocument);
 
 
 router.get("/",  getDocuments);
+
+router.get("/next-id", protect, getNextDocumentId);
 
 router.get("/:documentId",  getDocumentById);
 

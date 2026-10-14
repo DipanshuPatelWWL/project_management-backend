@@ -2,6 +2,14 @@ const mongoose = require('mongoose');
 
 const DocumentSchema = new mongoose.Schema({
 
+    documentId: {
+        type: String,
+        unique: true,
+        sparse: true,
+        uppercase: true,
+        trim: true,
+    },
+
     documentName : {
         type : String,
         required : true,

@@ -6,6 +6,7 @@ const Task = require("../models/Task");
 const Bug = require("../models/Bug");
 
 
+
 exports.globalSearch = async (req, res) => {
     try {
         const { q } = req.query;

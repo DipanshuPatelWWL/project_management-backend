@@ -24,7 +24,7 @@ exports.createNotification = async(req, res) => {
 
 
         const notification = await Notification.create({
-            sender : sender || req.user._id,
+            sender: sender || req.user?._id,
             receiver,
             project,
             title,
@@ -32,13 +32,29 @@ exports.createNotification = async(req, res) => {
             type,
         });
 
-        await sendNotificationEmail(receiver, title, message);
+        const populatedNotification = await Notification.findById(notification._id)
+            .populate("sender", "firstName lastName email profileImage")
+            .populate("receiver", "firstName lastName email profileImage")
+            .populate("project", "projectName projectId");
 
+        try {
+            const { getIO } = require("../socket/socket");
+            const io = getIO();
+            io.to([`user:${receiver}`, "superadmin"]).emit("newNotification", populatedNotification);
+        } catch (socketErr) {
+            console.error("Socket emit notice:", socketErr.message);
+        }
+
+        try {
+            await sendNotificationEmail(receiver, title, message);
+        } catch (mailErr) {
+            console.error("Email send notice:", mailErr.message);
+        }
 
         return res.status(201).json({
             success: true,
             message: "Notification created successfully",
-            notification,
+            notification: populatedNotification,
         });
 
     } catch(error) {
@@ -53,16 +69,22 @@ exports.createNotification = async(req, res) => {
 };
 
 
-// Get Notifications
+// Get Notifications for logged-in user
 exports.getNotification = async(req, res) => {
 
     try {
+        const isSuperAdmin = req.user?.role?.toLowerCase() === "superadmin";
+        const filter = isSuperAdmin
+            ? {}
+            : req.user
+            ? { $or: [{ receiver: req.user._id }, { sender: req.user._id }] }
+            : {};
 
-        const notifications = await Notification.find()
-            .populate("sender")
-            .populate("receiver")
-            .populate("project");
-
+        const notifications = await Notification.find(filter)
+            .populate("sender", "firstName lastName email profileImage employeeId")
+            .populate("receiver", "firstName lastName email profileImage employeeId")
+            .populate("project", "projectName projectId")
+            .sort({ createdAt: -1 });
 
         return res.status(200).json({
             success: true,
@@ -82,26 +104,31 @@ exports.getNotification = async(req, res) => {
 
 };
 
-exports.getNotificationById = async (req,res) => {
+exports.getNotificationById = async (req, res) => {
     try {
-        const notification = await Notification.findById(req.param.notificationId);
+        const notification = await Notification.findById(req.params.notificationId)
+            .populate("sender", "firstName lastName email profileImage")
+            .populate("receiver", "firstName lastName email profileImage")
+            .populate("project", "projectName projectId");
 
-       if(!notification) {
-        return res.status(400).json({
-        success :false,
-        message : "notification not found",
-         });
-       }
-       return res.status(200) .json ({
-        success: true,
-        message: "notification found",
-    });
+        if(!notification) {
+            return res.status(404).json({
+                success: false,
+                message: "Notification not found",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Notification found",
+            notification,
+        });
 
     } catch (error) {
-         return res.status(200) .json ({
-        success: true,
-        message: error.message,
-    });
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+        });
     }
 };
  
@@ -150,11 +177,16 @@ exports.markAllAsRead = async(req, res) => {
 
     try {
 
-        await Notification.updateMany(
-            {
+        const isSuperAdmin = req.user?.role?.toLowerCase() === "superadmin";
+        const filter = isSuperAdmin
+            ? { isRead: false }
+            : {
                 receiver: req.user._id,
                 isRead: false,
-            },
+            };
+
+        await Notification.updateMany(
+            filter,
             {
                 $set: {
                     isRead: true,
@@ -215,9 +247,10 @@ exports.deleteAllNotifications = async(req, res) => {
 
     try {
 
-        await Notification.deleteMany({
-            receiver: req.user._id,
-        });
+        const isSuperAdmin = req.user?.role?.toLowerCase() === "superadmin";
+        const filter = isSuperAdmin ? {} : { receiver: req.user._id };
+
+        await Notification.deleteMany(filter);
 
         return res.status(200).json({
             success: true,

@@ -1,10 +1,48 @@
 
 const Document = require("../models/Document");
 
+// Generate permanent sequential Document ID (e.g. DOC001, DOC002)
+const generateDocumentId = async () => {
+    const documents = await Document.find({
+        documentId: { $exists: true, $ne: "" },
+    }).select("documentId");
+
+    let highestNumber = 0;
+
+    documents.forEach((d) => {
+        if (d.documentId) {
+            const number = parseInt(d.documentId.replace("DOC", ""), 10);
+            if (!isNaN(number) && number > highestNumber) {
+                highestNumber = number;
+            }
+        }
+    });
+  
+    const nextNumber = highestNumber + 1;
+    return `DOC${String(nextNumber).padStart(3, "0")}`;
+};
+
+exports.getNextDocumentId = async (req, res) => {
+    try {
+        const nextDocumentId = await generateDocumentId();
+        return res.status(200).json({
+            success: true,
+            nextDocumentId,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Failed to generate document ID",
+            error: error.message,
+        });
+    }
+};
+
 exports.createDocument = async(req,res) => {
 
     try{
         const {
+            documentId,
             documentName,
             project,
             category,
@@ -22,10 +60,12 @@ exports.createDocument = async(req,res) => {
             });
         }
 
+        
         if(documentName){
             const existingDocumentName = await Document.findOne({
                 documentName,
             });
+
 
             if(existingDocumentName) {
                 return res.status(400).json({
@@ -35,7 +75,10 @@ exports.createDocument = async(req,res) => {
             }
         }
 
+        const nextDocId = documentId || (await generateDocumentId());
+
         const document = await Document.create({
+            documentId: nextDocId,
             documentName,
             project,
             category,
@@ -69,7 +112,20 @@ exports.getDocuments = async(req,res) => {
      
     try { 
          
-        const documents = await Document.find();
+        const documents = await Document.find()
+            .populate("project", "projectName projectId")
+            .populate("uploadedBy", "firstName lastName email")
+            .populate("createdBy", "firstName lastName email")
+            .sort({ createdAt: -1 });
+
+        // Auto backfill documentId for existing documents if missing
+        for (let i = 0; i < documents.length; i++) {
+            if (!documents[i].documentId) {
+                const autoId = `DOC${String(i + 1).padStart(3, "0")}`;
+                documents[i].documentId = autoId;
+                Document.updateOne({ _id: documents[i]._id }, { documentId: autoId }).exec().catch(() => {});
+            }
+        }
 
         return res.status(200).json({
             success: true,
@@ -93,7 +149,10 @@ exports.getDocumentById = async(req,res) => {
 
     try {
 
-        const document = await Document.findById(req.params.documentId);
+        const document = await Document.findById(req.params.documentId)
+            .populate("project", "projectName projectId")
+            .populate("uploadedBy", "firstName lastName email")
+            .populate("createdBy", "firstName lastName email");
      
         if(!document){ 
             return res.status(404).json({

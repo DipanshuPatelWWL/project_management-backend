@@ -1,13 +1,92 @@
 
+const mongoose = require("mongoose");
 const TimeLog = require("../models/TimeLog");
 
+// Generate sequential TimeLog ID (e.g. TL001, TL002)
+const generateTimeLogId = async () => {
+    const timeLogs = await TimeLog.find({
+        timeLogId: { $exists: true, $ne: "" },
+    }).select("timeLogId");
+
+    let highestNumber = 0;
+
+    timeLogs.forEach((t) => {
+        if (t.timeLogId) {
+            const number = parseInt(t.timeLogId.replace("TL", "").replace("LOG", ""), 10);
+            if (!isNaN(number) && number > highestNumber) {
+                highestNumber = number;
+            }
+        }
+    });
+
+    const nextNumber = highestNumber + 1;
+    return `TL${String(nextNumber).padStart(3, "0")}`;
+};
+
+// Get Next TimeLog ID
+exports.getNextTimeLogId = async (req, res) => {
+    try {
+        const nextTimeLogId = await generateTimeLogId();
+        return res.status(200).json({
+            success: true,
+            nextTimeLogId,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Failed to generate time log ID",
+            error: error.message,
+        });
+    }
+};
+
+// Get Time Log By ID
+exports.getTimeLogById = async (req, res) => {
+    try {
+        const { timeLogId } = req.params;
+        let timeLog = null;
+
+        if (mongoose.Types.ObjectId.isValid(timeLogId)) {
+            timeLog = await TimeLog.findById(timeLogId)
+                .populate("project")
+                .populate("sprint")
+                .populate("task")
+                .populate("user");
+        }
+
+        if (!timeLog) {
+            timeLog = await TimeLog.findOne({ timeLogId: timeLogId.toUpperCase() })
+                .populate("project")
+                .populate("sprint")
+                .populate("task")
+                .populate("user");
+        }
+
+        if (!timeLog) {
+            return res.status(404).json({
+                success: false,
+                message: "Time log not found",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            timeLog,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch time log",
+            error: error.message,
+        });
+    }
+};
 
 // Create Time Log
-exports.createTimeLog = async(req,res) => {
-
+exports.createTimeLog = async (req, res) => {
     try {
-    
         const {
+            timeLogId,
             project,
             sprint,
             task,
@@ -15,23 +94,35 @@ exports.createTimeLog = async(req,res) => {
             workDate,
             hoursWorked,
             Description,
+            description,
+            status,
         } = req.body;
 
-        if(!project || !workDate || !hoursWorked) {
+        if (!project || !workDate || !hoursWorked) {
             return res.status(400).json({
                 success: false,
                 message: "Project, work date and hours worked are required",
             });
         }
 
+        const nextId =
+            timeLogId && timeLogId.trim() !== ""
+                ? timeLogId.trim().toUpperCase()
+                : await generateTimeLogId();
+
+        const descText = description || Description || "";
+
         const timeLog = await TimeLog.create({
+            timeLogId: nextId,
             project,
-            sprint,
-            task,
-            user: user || req.user._id,
+            sprint: sprint || undefined,
+            task: task || undefined,
+            user: user || req.user?._id,
             workDate,
-            hoursWorked,
-            Description,
+            hoursWorked: Number(hoursWorked),
+            Description: descText,
+            description: descText,
+            status: status || "Logged",
         });
 
         return res.status(201).json({
@@ -39,9 +130,7 @@ exports.createTimeLog = async(req,res) => {
             message: "Time log created successfully",
             timeLog,
         });
-
-    } catch(error) {
-
+    } catch (error) {
         return res.status(500).json({
             success: false,
             message: "Failed to create time log",
@@ -50,18 +139,23 @@ exports.createTimeLog = async(req,res) => {
     }
 };
 
-
 // Get All Time Logs
-exports.getTimeLogs = async(req,res) => {
-
+exports.getTimeLogs = async (req, res) => {
     try {
-
         const timeLogs = await TimeLog.find()
             .populate("project")
             .populate("sprint")
             .populate("task")
-            .populate("user");
+            .populate("user")
+            .sort({ createdAt: -1 });
 
+        // Auto-backfill missing timeLogId if any
+        for (let i = 0; i < timeLogs.length; i++) {
+            if (!timeLogs[i].timeLogId) {
+                timeLogs[i].timeLogId = await generateTimeLogId();
+                await timeLogs[i].save();
+            }
+        }
 
         return res.status(200).json({
             success: true,
@@ -69,9 +163,7 @@ exports.getTimeLogs = async(req,res) => {
             message: "Time logs fetched successfully",
             timeLogs,
         });
-
-    } catch(error) {
-
+    } catch (error) {
         return res.status(500).json({
             success: false,
             message: "Failed to fetch time logs",
@@ -112,10 +204,8 @@ exports.getMyTimeLogs = async(req,res) => {
 
 
 // Update Time Log
-exports.updateTimeLog = async(req,res) => {
-
+exports.updateTimeLog = async (req, res) => {
     try {
-
         const {
             project,
             sprint,
@@ -124,25 +214,39 @@ exports.updateTimeLog = async(req,res) => {
             workDate,
             hoursWorked,
             Description,
+            description,
+            status,
         } = req.body;
-    
-        const timeLog = await TimeLog.findById(req.params.timeLogId);
-    
-        if(!timeLog) {
+
+        const { timeLogId } = req.params;
+        let timeLog = null;
+
+        if (mongoose.Types.ObjectId.isValid(timeLogId)) {
+            timeLog = await TimeLog.findById(timeLogId);
+        }
+        if (!timeLog) {
+            timeLog = await TimeLog.findOne({ timeLogId: timeLogId.toUpperCase() });
+        }
+
+        if (!timeLog) {
             return res.status(404).json({
                 success: false,
                 message: "Time log not found",
             });
         }
 
-         if (project) timeLog.project = project;
-         if (sprint) timeLog.sprint = sprint;
-         if (task) timeLog.task = task;
+        if (project) timeLog.project = project;
+        if (sprint !== undefined) timeLog.sprint = sprint || null;
+        if (task !== undefined) timeLog.task = task || null;
         if (user) timeLog.user = user;
         if (workDate) timeLog.workDate = workDate;
-        if (hoursWorked) timeLog.hoursWorked = hoursWorked;
-        if (Description) timeLog.Description = Description;
-        
+        if (hoursWorked !== undefined) timeLog.hoursWorked = Number(hoursWorked);
+        if (description !== undefined || Description !== undefined) {
+            const desc = description !== undefined ? description : Description;
+            timeLog.description = desc;
+            timeLog.Description = desc;
+        }
+        if (status) timeLog.status = status;
 
         await timeLog.save();
 
@@ -151,9 +255,7 @@ exports.updateTimeLog = async(req,res) => {
             message: "Time log updated successfully",
             timeLog,
         });
-
-    } catch(error) {
-
+    } catch (error) {
         return res.status(500).json({
             success: false,
             message: "Failed to update time log",
@@ -162,30 +264,33 @@ exports.updateTimeLog = async(req,res) => {
     }
 };
 
-
 // Delete Time Log
-exports.deleteTimeLog = async(req,res) => {
-
+exports.deleteTimeLog = async (req, res) => {
     try {
+        const { timeLogId } = req.params;
+        let timeLog = null;
 
-        const timeLog = await TimeLog.findById(req.params.timeLogId);
+        if (mongoose.Types.ObjectId.isValid(timeLogId)) {
+            timeLog = await TimeLog.findById(timeLogId);
+        }
+        if (!timeLog) {
+            timeLog = await TimeLog.findOne({ timeLogId: timeLogId.toUpperCase() });
+        }
 
-        if(!timeLog) {
+        if (!timeLog) {
             return res.status(404).json({
                 success: false,
                 message: "Time log not found",
             });
         }
 
-        await TimeLog.findByIdAndDelete(req.params.timeLogId);
+        await TimeLog.findByIdAndDelete(timeLog._id);
 
         return res.status(200).json({
             success: true,
             message: "Time log deleted successfully",
         });
-
-    } catch(error) {
-
+    } catch (error) {
         return res.status(500).json({
             success: false,
             message: "Failed to delete time log",

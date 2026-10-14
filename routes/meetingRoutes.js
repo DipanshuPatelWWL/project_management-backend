@@ -5,6 +5,7 @@ const { protect } = require("../middleware/authMiddleware");
 const {
     createMeeting,
     getMeetings,
+    getNextMeetingId,
     getMeetingById,
     updateMeeting,
     changeMeetingStatus,
@@ -18,6 +19,8 @@ router.post("/", protect, createMeeting);
 
 
 router.get("/", getMeetings);
+
+router.get("/next-id", protect, getNextMeetingId);
 
 router.get("/:meetingId", getMeetingById);
 

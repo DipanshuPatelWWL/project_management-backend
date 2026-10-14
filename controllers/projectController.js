@@ -1,6 +1,7 @@
 const Project = require("../models/Project");
 const User = require("../models/User");
 const Client = require("../models/Client");
+const { sendNotification } = require("../services/notificationService");
 
 // Generate permanent sequential Project ID.
 // Soft-deleted projects are included in the scan so IDs are never
@@ -132,6 +133,63 @@ exports.createProject = async (req, res) => {
             createdBy: req.user._id,
             updatedBy: req.user._id,
         });
+
+        if (projectManager && req.user?._id && projectManager.toString() !== req.user._id.toString()) {
+            await sendNotification({
+                receiver: projectManager,
+                sender: req.user._id,
+                title: "Assigned as Project Manager",
+                message: `You have been assigned as Project Manager for "${project.projectName}".`,
+                type: "project",
+                project: project._id,
+                entityType: "Project",
+                entityId: project._id,
+            });
+        }
+
+        if (teamLead && req.user?._id && teamLead.toString() !== req.user._id.toString()) {
+            await sendNotification({
+                receiver: teamLead,
+                sender: req.user._id,
+                title: "Assigned as Team Lead",
+                message: `You have been assigned as Team Lead for "${project.projectName}".`,
+                type: "project",
+                project: project._id,
+                entityType: "Project",
+                entityId: project._id,
+            });
+        }
+
+        if (Array.isArray(teamMembers) && teamMembers.length > 0) {
+            for (const memberId of teamMembers) {
+                const mId = memberId?._id ? memberId._id.toString() : memberId.toString();
+                if (req.user?._id && mId !== req.user._id.toString()) {
+                    await sendNotification({
+                        receiver: mId,
+                        sender: req.user._id,
+                        title: "Added to Project Team",
+                        message: `You have been added to project "${project.projectName}".`,
+                        type: "project",
+                        project: project._id,
+                        entityType: "Project",
+                        entityId: project._id,
+                    });
+                }
+            }
+        }
+
+        if (req.user?._id) {
+            await sendNotification({
+                receiver: req.user._id,
+                sender: req.user._id,
+                title: "Project Created",
+                message: `Project "${project.projectName}" created successfully.`,
+                type: "project",
+                project: project._id,
+                entityType: "Project",
+                entityId: project._id,
+            });
+        }
 
         return res.status(201).json({
             success: true,
@@ -342,6 +400,28 @@ exports.deleteProject = async (req, res) => {
             });
         }
 
+        const stakeholders = [
+            project.projectManager,
+            project.teamLead,
+            ...(Array.isArray(project.teamMembers) ? project.teamMembers : []),
+        ].filter(Boolean);
+
+        for (const userRef of stakeholders) {
+            const uId = userRef?._id ? userRef._id.toString() : userRef.toString();
+            if (req.user?._id && uId !== req.user._id.toString()) {
+                await sendNotification({
+                    receiver: uId,
+                    sender: req.user._id,
+                    title: "Project Deleted",
+                    message: `Project "${project.projectName}" has been deleted.`,
+                    type: "project",
+                    project: project._id,
+                    entityType: "Project",
+                    entityId: project._id,
+                });
+            }
+        }
+
         project.isDeleted = true;
         project.updatedBy = req.user._id;
 
@@ -392,6 +472,19 @@ exports.assignProjectManager = async (req, res) => {
 
         await project.save({ validateModifiedOnly: true });
 
+        if (projectManager && req.user?._id) {
+            await sendNotification({
+                receiver: projectManager,
+                sender: req.user._id,
+                title: "Assigned as Project Manager",
+                message: `You have been assigned as Project Manager for "${project.projectName}".`,
+                type: "project",
+                project: project._id,
+                entityType: "Project",
+                entityId: project._id,
+            });
+        }
+
         return res.status(200).json({
             success: true,
             message: "Project manager assigned successfully",
@@ -438,6 +531,19 @@ exports.assignTeamLead = async (req, res) => {
 
         await project.save({ validateModifiedOnly: true });
 
+        if (teamLead && req.user?._id) {
+            await sendNotification({
+                receiver: teamLead,
+                sender: req.user._id,
+                title: "Assigned as Team Lead",
+                message: `You have been assigned as Team Lead for "${project.projectName}".`,
+                type: "project",
+                project: project._id,
+                entityType: "Project",
+                entityId: project._id,
+            });
+        }
+
         return res.status(200).json({
             success: true,
             message: "Team lead assigned successfully",
@@ -483,6 +589,23 @@ exports.assignMembers = async (req, res) => {
         project.updatedBy = req.user._id;
 
         await project.save({ validateModifiedOnly: true });
+
+        const membersList = Array.isArray(teamMembers) ? teamMembers : [teamMembers];
+        for (const memberId of membersList) {
+            const mId = memberId?._id ? memberId._id.toString() : memberId.toString();
+            if (req.user?._id && mId !== req.user._id.toString()) {
+                await sendNotification({
+                    receiver: mId,
+                    sender: req.user._id,
+                    title: "Added to Project Team",
+                    message: `You have been added to project "${project.projectName}".`,
+                    type: "project",
+                    project: project._id,
+                    entityType: "Project",
+                    entityId: project._id,
+                });
+            }
+        }
 
         return res.status(200).json({
             success: true,

@@ -62,7 +62,7 @@ exports.createCompany = async (req, res) => {
       !country ||
       !pincode ||
       !timeZone ||
-      !currency ||
+      !currency || 
       !officeStartTime ||
       !officeEndTime
     ) {

@@ -1,46 +1,56 @@
 const mongoose = require("mongoose");
 
 const timeLogSchema = new mongoose.Schema({
-    project : {
-        type : mongoose.Schema.Types.ObjectId,
-        ref : "Project",
-        trim : true,
+    timeLogId: {
+        type: String,
+        unique: true,
+        sparse: true,
+        uppercase: true,
+        trim: true,
     },
-    sprint : {
-        type : mongoose.Schema.Types.ObjectId,
-        ref : "Sprint",
-        trim : true,
+    project: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Project",
+        trim: true,
     },
-    task : {
-        type : mongoose.Schema.Types.ObjectId,
-        ref : "Task",
-        trim : true,
-
+    sprint: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Sprint",
+        trim: true,
     },
-
-    user : {
-        type : mongoose.Schema.Types.ObjectId,
-        ref : "User",
-        trim : true,
-
+    task: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Task",
+        trim: true,
     },
-
-    workDate : {
-        type : Date,
-        trim : true,
-
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        trim: true,
     },
-    hoursWorked : {
-        type : Number ,
-        trim : true,
+    workDate: {
+        type: Date,
+        trim: true,
     },
-    Description : {
-        type : String,
-        trim : true,
+    hoursWorked: {
+        type: Number,
+        trim: true,
     },
-},
-{timestamps : true} );
+    Description: {
+        type: String,
+        trim: true,
+    },
+    description: {
+        type: String,
+        trim: true,
+    },
+    status: {
+        type: String,
+        enum: ["Logged", "Approved", "Pending", "Rejected"],
+        default: "Logged",
+    },
+}, { timestamps: true });
 
 module.exports =
     mongoose.models.TimeLog ||
-    mongoose.model("TimeLog", timeLogSchema);    
+    mongoose.model("TimeLog", timeLogSchema);

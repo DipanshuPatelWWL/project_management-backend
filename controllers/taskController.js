@@ -6,9 +6,27 @@ const {
 } = require("../services/notificationService");
 
 
+const sanitizeTaskData = (data) => {
+    const cleaned = { ...data };
+    if (!cleaned.sprint || cleaned.sprint === "") cleaned.sprint = null;
+    if (!cleaned.assignedTo || cleaned.assignedTo === "") cleaned.assignedTo = null;
+    if (!cleaned.assignedBy || cleaned.assignedBy === "") cleaned.assignedBy = null;
+    if (cleaned.startDate === "") cleaned.startDate = null;
+    if (cleaned.dueDate === "") cleaned.dueDate = null;
+    if (cleaned.compltedDate === "") cleaned.compltedDate = null;
+    if (cleaned.storyPoints === "" || cleaned.storyPoints === undefined) cleaned.storyPoints = 0;
+    else cleaned.storyPoints = Number(cleaned.storyPoints) || 0;
+    if (cleaned.estimatedHours === "" || cleaned.estimatedHours === undefined) cleaned.estimatedHours = 0;
+    else cleaned.estimatedHours = Number(cleaned.estimatedHours) || 0;
+    if (cleaned.actualHours === "" || cleaned.actualHours === undefined) cleaned.actualHours = 0;
+    else cleaned.actualHours = Number(cleaned.actualHours) || 0;
+    return cleaned;
+};
+
 // Create Task
 exports.createTask = async (req, res) => {
     try {
+        const sanitized = sanitizeTaskData(req.body);
         const {
             taskTitle,
             description,
@@ -23,19 +41,32 @@ exports.createTask = async (req, res) => {
             startDate,
             dueDate,
             compltedDate,
-            attachments,
-        } = req.body;
+        } = sanitized;
 
-        if (!taskTitle || !project) {
+        if (!taskTitle || !project || !startDate || !dueDate || !compltedDate) {
             return res.status(400).json({
                 success: false,
-                message: "Please fill all required fields",
+                message: "Please fill all required fields (Task title, Project, Start Date, Due Date, and Completed Date)",
             });
         }
 
-       // Postman se aayi files se URLs banao
-     const attachmentUrls = req.files ? req.files.map(file => `/uploads/${file.filename}`) : [];
-      
+        if (new Date(dueDate) < new Date(startDate)) {
+            return res.status(400).json({
+                success: false,
+                message: "Due Date cannot be before Start Date",
+            });
+        }
+
+        if (new Date(compltedDate) < new Date(startDate)) {
+            return res.status(400).json({
+                success: false,
+                message: "Completed Date cannot be before Start Date",
+            });
+        }
+
+        const attachmentUrls = req.files && req.files.length > 0 
+            ? req.files.map(file => `/uploads/${file.filename}`) 
+            : [];
 
         const task = await Task.create({
             taskTitle,
@@ -43,40 +74,60 @@ exports.createTask = async (req, res) => {
             project,
             sprint,
             assignedTo,
-            priority,
-            status,
+            assignedBy: req.user?._id || null,
+            priority: priority || "medium",
+            status: status || "to-do",
             storyPoints,
             estimatedHours,
             actualHours,
             startDate,
             dueDate,
-            compltedDate,
-            attachments,
-            createdBy: req.user._id,
-            updatedBy: req.user._id,
-             attachments: attachmentUrls,
+            compltedDate: status === "completed" ? (compltedDate || new Date()) : compltedDate,
+            attachments: attachmentUrls,
+            createdBy: req.user?._id,
+            updatedBy: req.user?._id,
         });
 
+        if (assignedTo && req.user?._id) {
+            try {
+                await sendNotification({
+                    receiver: assignedTo,
+                    sender: req.user._id,
+                    title: "New Task Assigned",
+                    message: `You have been assigned a new task: ${task.taskTitle}`,
+                    type: "task",
+                    project: task.project,
+                    entityType: "Task",
+                    entityId: task._id,
+                });
 
-
-        if (assignedTo) {
-            await sendNotification({
-                receiver: assignedTo,
-                sender: req.user._id,
-                title: "New Task Assigned",
-                message: `You have been assigned a new task: ${task.taskTitle}`,
-                type: "task",
-                entityType: "Task",
-                entityId: task._id,
-            });
+                await sendTaskAssignmentEmail({
+                    assignedUser: assignedTo,
+                    task: taskTitle,
+                    project: project,
+                });
+            } catch (notifyErr) {
+                console.error("Task assignment notification/email failed:", notifyErr.message);
+            }
         }
 
-           await sendTaskAssignmentEmail({
-            assignedUser: assignedTo,
-            task: taskTitle,
-            project : project,
-        })
-
+        // Also notify creator if task was not self-assigned
+        if (req.user?._id && (!assignedTo || assignedTo.toString() !== req.user._id.toString())) {
+            try {
+                await sendNotification({
+                    receiver: req.user._id,
+                    sender: req.user._id,
+                    title: "Task Created",
+                    message: `Task "${task.taskTitle}" has been created successfully.`,
+                    type: "task",
+                    project: task.project,
+                    entityType: "Task",
+                    entityId: task._id,
+                });
+            } catch (err) {
+                console.error("Task creator notification failed:", err.message);
+            }
+        }
 
         return res.status(201).json({
             success: true,
@@ -98,8 +149,12 @@ exports.createTask = async (req, res) => {
 exports.getTasks = async (req, res) => {
     try {
         const tasks = await Task.find()
-       .populate("project", "projectName")
-       .populate("assignedTo", "firstName lastName");
+            .populate("project", "projectName")
+            .populate("sprint", "sprintName")
+            .populate("assignedTo", "firstName lastName email role profileImage")
+            .populate("assignedBy", "firstName lastName")
+            .populate("createdBy", "firstName lastName")
+            .sort({ createdAt: -1 });
 
         return res.status(200).json({
             success: true,
@@ -121,7 +176,12 @@ exports.getTasks = async (req, res) => {
 // Get Task By ID
 exports.getTaskById = async (req, res) => {
     try {
-        const task = await Task.findById(req.params.taskId);
+        const task = await Task.findById(req.params.taskId)
+            .populate("project", "projectName")
+            .populate("sprint", "sprintName")
+            .populate("assignedTo", "firstName lastName email role profileImage")
+            .populate("assignedBy", "firstName lastName")
+            .populate("createdBy", "firstName lastName");
 
         if (!task) {
             return res.status(404).json({
@@ -149,11 +209,13 @@ exports.getTaskById = async (req, res) => {
 // Update Task
 exports.updateTask = async (req, res) => {
     try {
+        const sanitized = sanitizeTaskData(req.body);
         const {
             taskTitle,
             description,
             project,
             sprint,
+            assignedTo,
             priority,
             status,
             storyPoints,
@@ -162,8 +224,7 @@ exports.updateTask = async (req, res) => {
             startDate,
             dueDate,
             compltedDate,
-            attachments,
-        } = req.body;
+        } = sanitized;
 
         const task = await Task.findById(req.params.taskId);
 
@@ -174,39 +235,93 @@ exports.updateTask = async (req, res) => {
             });
         }
 
-        if (taskTitle) task.taskTitle = taskTitle;
-        if (description) task.description = description;
-        if (project) task.project = project; 
-        if (sprint) task.sprint = sprint;
-        if (priority) task.priority = priority;
-        if (status) task.status = status;
+        const finalStartDate = startDate !== undefined ? startDate : task.startDate;
+        const finalDueDate = dueDate !== undefined ? dueDate : task.dueDate;
+        const finalCompltedDate = compltedDate !== undefined ? compltedDate : task.compltedDate;
+
+        if (finalStartDate && finalDueDate && new Date(finalDueDate) < new Date(finalStartDate)) {
+            return res.status(400).json({
+                success: false,
+                message: "Due Date cannot be before Start Date",
+            });
+        }
+
+        if (finalStartDate && finalCompltedDate && new Date(finalCompltedDate) < new Date(finalStartDate)) {
+            return res.status(400).json({
+                success: false,
+                message: "Completed Date cannot be before Start Date",
+            });
+        }
+
+        if (taskTitle !== undefined) task.taskTitle = taskTitle;
+        if (description !== undefined) task.description = description;
+        if (project !== undefined) task.project = project; 
+        if (sprint !== undefined) task.sprint = sprint;
+        if (assignedTo !== undefined) {
+            if (assignedTo && task.assignedTo?.toString() !== assignedTo?.toString()) {
+                task.assignedBy = req.user?._id || task.assignedBy;
+            }
+            task.assignedTo = assignedTo;
+        }
+        if (priority !== undefined) task.priority = priority;
+        if (status !== undefined) {
+            task.status = status;
+            if (status === "completed" && !task.compltedDate) {
+                task.compltedDate = new Date();
+            }
+        }
 
         if (storyPoints !== undefined) task.storyPoints = storyPoints;
         if (estimatedHours !== undefined) task.estimatedHours = estimatedHours;
         if (actualHours !== undefined) task.actualHours = actualHours;
 
-        if (startDate) task.startDate = startDate;
-        if (dueDate) task.dueDate = dueDate;
-        if (compltedDate) task.compltedDate = compltedDate;
-        if (attachments) task.attachments = attachments;
+        if (startDate !== undefined) task.startDate = startDate;
+        if (dueDate !== undefined) task.dueDate = dueDate;
+        if (compltedDate !== undefined) task.compltedDate = compltedDate;
 
-        task.updatedBy = req.user._id;
+        let currentAttachments = task.attachments || [];
+        if (req.body.existingAttachments !== undefined) {
+            try {
+                const parsed = typeof req.body.existingAttachments === "string"
+                    ? JSON.parse(req.body.existingAttachments)
+                    : req.body.existingAttachments;
+                currentAttachments = Array.isArray(parsed) ? parsed : [parsed];
+            } catch (e) {
+                currentAttachments = Array.isArray(req.body.existingAttachments)
+                    ? req.body.existingAttachments
+                    : [req.body.existingAttachments];
+            }
+        }
+
+        if (req.files && req.files.length > 0) {
+            const newFiles = req.files.map(file => `/uploads/${file.filename}`);
+            task.attachments = [...currentAttachments, ...newFiles];
+        } else if (req.body.existingAttachments !== undefined) {
+            task.attachments = currentAttachments;
+        }
+
+        task.updatedBy = req.user?._id;
 
         await task.save();
 
         if (
             task.assignedTo &&
+            req.user?._id &&
             task.assignedTo.toString() !== req.user._id.toString()
         ) {
-            await sendNotification({
-                receiver: task.assignedTo,
-                sender: req.user._id,
-                title: "Task Updated",
-                message: `Your task "${task.taskTitle}" has been updated.`,
-                type: "task",
-                entityType: "Task",
-                entityId: task._id,
-            });
+            try {
+                await sendNotification({
+                    receiver: task.assignedTo,
+                    sender: req.user._id,
+                    title: "Task Updated",
+                    message: `Your task "${task.taskTitle}" has been updated.`,
+                    type: "task",
+                    entityType: "Task",
+                    entityId: task._id,
+                });
+            } catch (err) {
+                console.error("Task update notification failed:", err.message);
+            }
         }
 
         return res.status(200).json({

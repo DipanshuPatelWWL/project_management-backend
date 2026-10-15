@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
 const regex = require("../utils/regexPatterns");
+const logAudit = require("../utils/auditLogger");
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -107,6 +108,16 @@ exports.login = async (req, res) => {
             user.lastLogin = new Date();
             await user.save();
 
+            await logAudit({
+                req,
+                userId: user._id,
+                module: "Auth",
+                action: "LOGIN",
+                description: `User ${user.email} (${user.role}) logged in successfully`,
+                entityType: "User",
+                entityId: user._id,
+            });
+
             res.cookie("token", token, cookieOptions).status(200).json({
                 success: true,
                 message: 'User Logged in successfully',
@@ -124,6 +135,16 @@ exports.login = async (req, res) => {
         }
         else {
             // password do not match
+            await logAudit({
+                req,
+                userId: user._id,
+                module: "Auth",
+                action: "LOGIN_FAILED",
+                description: `Failed login attempt for ${user.email} - incorrect password`,
+                entityType: "User",
+                entityId: user._id,
+            });
+
             return res.status(403).json({
                 success: false,
                 message: "Password Incorrect",
@@ -195,6 +216,16 @@ exports.changePassword = async (req, res) => {
             user.password = await bcrypt.hash(newPassword, 10);
             await user.save();
 
+            await logAudit({
+                req,
+                userId: user._id,
+                module: "Auth",
+                action: "PASSWORD_CHANGE",
+                description: `Password changed for user ${user.email}`,
+                entityType: "User",
+                entityId: user._id,
+            });
+
             return res.status(200).json({
                 success: true,
                 message: 'Password changed successfully. Please log in again.',
@@ -222,6 +253,18 @@ exports.changePassword = async (req, res) => {
 
 exports.logout = async (req, res) => {
     try {
+        if (req.user) {
+            await logAudit({
+                req,
+                userId: req.user._id,
+                module: "Auth",
+                action: "LOGOUT",
+                description: `User ${req.user.email} logged out`,
+                entityType: "User",
+                entityId: req.user._id,
+            });
+        }
+
         res.cookie("token", "", {
             httpOnly: true,
             expires: new Date(0),

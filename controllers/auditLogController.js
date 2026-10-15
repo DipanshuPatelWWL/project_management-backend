@@ -1,10 +1,12 @@
 const AuditLog = require("../models/AuditLog");
+const User = require("../models/User");
 
 exports.getAuditLogs = async (req, res) => {
     try {
         const {
             page = 1,
             limit = 20,
+            search,
             action,
             user,
             entityType,
@@ -12,9 +14,31 @@ exports.getAuditLogs = async (req, res) => {
             startDate,
             endDate,
         } = req.query;
-
+    
         const filter = {};
 
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), "i");
+            const matchedUsers = await User.find({
+                $or: [
+                    { firstName: searchRegex },
+                    { lastName: searchRegex },
+                    { email: searchRegex },
+                    { employeeId: searchRegex },
+                ],
+            }).select("_id");
+            const matchedUserIds = matchedUsers.map((u) => u._id);
+
+            filter.$or = [
+                { description: searchRegex },
+                { module: searchRegex },
+                { action: searchRegex },
+                { ipAddress: searchRegex },
+                { browser: searchRegex },
+                ...(matchedUserIds.length ? [{ user: { $in: matchedUserIds } }] : []),
+            ];
+        }
+    
         if (action) {
             filter.action = action;
         }

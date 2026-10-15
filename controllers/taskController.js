@@ -4,6 +4,7 @@ const {sendTaskAssignmentEmail} = require("../services/emailService");
 const {
     sendNotification,
 } = require("../services/notificationService");
+const logAudit = require("../utils/auditLogger");
 
 
 const sanitizeTaskData = (data) => {
@@ -128,6 +129,15 @@ exports.createTask = async (req, res) => {
                 console.error("Task creator notification failed:", err.message);
             }
         }
+
+        await logAudit({
+            req,
+            module: "Task",
+            action: "CREATE",
+            description: `Created new task "${task.taskTitle}" (${task.taskId || task._id})`,
+            entityType: "Task",
+            entityId: task._id,
+        });
 
         return res.status(201).json({
             success: true,
@@ -371,6 +381,15 @@ exports.deleteTask = async (req, res) => {
             });
         }
 
+        await logAudit({
+            req,
+            module: "Task",
+            action: "DELETE",
+            description: `Deleted task "${task.taskTitle}" (${task.taskId || task._id})`,
+            entityType: "Task",
+            entityId: task._id,
+        });
+
         return res.status(200).json({
             success: true,
             message: "Task deleted successfully",
@@ -481,6 +500,15 @@ exports.changeTaskStatus = async (req, res) => {
                 entityId: task._id,
             });
         }
+
+        await logAudit({
+            req,
+            module: "Task",
+            action: "STATUS_CHANGE",
+            description: `Changed task "${task.taskTitle}" status to ${status}`,
+            entityType: "Task",
+            entityId: task._id,
+        });
 
         return res.status(200).json({
             success: true,

@@ -189,10 +189,10 @@ exports.createCompany = async (req, res) => {
 
 exports.getCompany = async (req, res) => {
   try {
-    // Only active (non-deleted) companies are displayed
+    // Only active (non-deleted) companies are displayed, newest first
     const companies = await Company.find({
       isDeleted: false,
-    });
+    }).sort({ createdAt: -1 });
 
     // Generate preview from highest existing Company ID
     // without increasing anything

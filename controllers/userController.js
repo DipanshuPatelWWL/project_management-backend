@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const regex = require("../utils/regexPatterns");
+const logAudit = require("../utils/auditLogger");
 
 // Generate next Employee ID
 const generateEmployeeId = async () => {
@@ -152,6 +153,15 @@ exports.createUser = async (req, res) => {
             await User.findById(user._id)
                 .select("-password");
 
+        await logAudit({
+            req,
+            module: "User",
+            action: "CREATE",
+            description: `Created new user ${createdUser.firstName} ${createdUser.lastName} (${createdUser.email}) with role ${createdUser.role}`,
+            entityType: "User",
+            entityId: createdUser._id,
+        });
+
         return res.status(201).json({
             success: true,
             message: "User created successfully",
@@ -173,7 +183,8 @@ exports.getUsers = async (req, res) => {
             isDeleted: false,
         })
             .select("-password")
-            .populate("company", "companyName");
+            .populate("company", "companyName")
+            .sort({ createdAt: -1 });
 
         const nextEmployeeId =
             await generateEmployeeId();
@@ -429,6 +440,15 @@ exports.deleteUser = async (req, res) => {
 
         await user.save();
 
+        await logAudit({
+            req,
+            module: "User",
+            action: "DELETE",
+            description: `Deleted user ${user.firstName} ${user.lastName} (${user.email})`,
+            entityType: "User",
+            entityId: user._id,
+        });
+
         return res.status(200).json({
             success: true,
             message: "User deleted successfully",
@@ -592,6 +612,15 @@ exports.changeUserStatus = async (req, res) => {
 
         await user.save();
 
+        await logAudit({
+            req,
+            module: "User",
+            action: "STATUS_CHANGE",
+            description: `Changed status of user ${user.firstName} ${user.lastName} to ${status}`,
+            entityType: "User",
+            entityId: user._id,
+        });
+
         return res.status(200).json({
             success: true,
             message: "Status updated",
@@ -631,6 +660,15 @@ exports.changeUserRole = async (req, res) => {
         user.updatedBy = req.user._id;
 
         await user.save();
+
+        await logAudit({
+            req,
+            module: "User",
+            action: "ROLE_CHANGE",
+            description: `Changed role of user ${user.firstName} ${user.lastName} to ${role}`,
+            entityType: "User",
+            entityId: user._id,
+        });
 
         return res.status(200).json({
             success: true,

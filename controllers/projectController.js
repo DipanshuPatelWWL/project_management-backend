@@ -2,6 +2,7 @@ const Project = require("../models/Project");
 const User = require("../models/User");
 const Client = require("../models/Client");
 const { sendNotification } = require("../services/notificationService");
+const logAudit = require("../utils/auditLogger");
 
 // Generate permanent sequential Project ID.
 // Soft-deleted projects are included in the scan so IDs are never
@@ -191,6 +192,15 @@ exports.createProject = async (req, res) => {
             });
         }
 
+        await logAudit({
+            req,
+            module: "Project",
+            action: "CREATE",
+            description: `Created new project "${project.projectName}" (${project.projectId})`,
+            entityType: "Project",
+            entityId: project._id,
+        });
+
         return res.status(201).json({
             success: true,
             message: "Project created successfully",
@@ -209,13 +219,14 @@ exports.createProject = async (req, res) => {
 
 exports.getProjects = async (req, res) => {
     try {
-        // Only active (non-deleted) projects are displayed
+        // Only active (non-deleted) projects are displayed, newest first
         const projects = await Project.find({ isDeleted: false })
             .populate("company")
             .populate("client")
             .populate("projectManager")
             .populate("teamLead")
-            .populate("teamMembers");
+            .populate("teamMembers")
+            .sort({ createdAt: -1 });
 
         // Preview of the next Project ID, without incrementing anything
         const nextProjectId = await generateProjectId();
@@ -426,6 +437,15 @@ exports.deleteProject = async (req, res) => {
         project.updatedBy = req.user._id;
 
         await project.save({ validateModifiedOnly: true });
+
+        await logAudit({
+            req,
+            module: "Project",
+            action: "DELETE",
+            description: `Deleted project "${project.projectName}" (${project.projectId})`,
+            entityType: "Project",
+            entityId: project._id,
+        });
 
         return res.status(200).json({
             success: true,

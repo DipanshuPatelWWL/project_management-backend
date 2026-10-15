@@ -60,25 +60,36 @@ exports.globalSearch = async (req, res) => {
             }).limit(10),
 
             Project.find({
+                isDeleted: false,
                 $or: [
                     { projectName: regex },
+                    { projectId: regex },
                     { description: regex },
                 ],
-            }).limit(10),
+            })
+                .populate("client", "firstName lastName companyName")
+                .limit(10),
 
             Task.find({
                 $or: [
-                    { taskName: regex },
-                    { title: regex },
+                    { taskTitle: regex },
                     { description: regex },
                 ],
-            }).limit(10),
+            })
+                .populate("project", "projectName")
+                .populate("assignedTo", "firstName lastName email profileImage")
+                .limit(10),
+
             Bug.find({
                 $or: [
-                    { title: regex },
+                    { bugTitle: regex },
+                    { bugId: regex },
                     { description: regex },
                 ],
-            }).limit(10),
+            })
+                .populate("project", "projectName")
+                .populate("assignedTo", "firstName lastName email")
+                .limit(10),
         ]);
 
         return res.status(200).json({
@@ -242,8 +253,10 @@ exports.searchProjects = async (req, res) => {
         const regex = new RegExp(q.trim(), "i");
 
         const projects = await Project.find({
+            isDeleted: false,
             $or: [
                 { projectName: regex },
+                { projectId: regex },
                 { description: regex },
             ],
         })
@@ -282,12 +295,12 @@ exports.searchTasks = async (req, res) => {
 
         const tasks = await Task.find({
             $or: [
-                { taskName: regex },
-                { title: regex },
+                { taskTitle: regex },
                 { description: regex },
             ],
         })
             .populate("project", "projectName")
+            .populate("assignedTo", "firstName lastName email profileImage")
             .limit(50);
 
         return res.status(200).json({
@@ -320,11 +333,13 @@ exports.searchBugs = async (req, res) => {
 
         const bugs = await Bug.find({
             $or: [
-                { title: regex },
+                { bugTitle: regex },
+                { bugId: regex },
                 { description: regex },
             ],
         })
             .populate("project", "projectName")
+            .populate("assignedTo", "firstName lastName email")
             .limit(50);
 
         return res.status(200).json({

@@ -1,6 +1,7 @@
 const Bug = require("../models/Bug");
 const User = require("../models/User");
 const { sendNotification } = require("../services/notificationService");
+const logAudit = require("../utils/auditLogger");
 
 // Generate permanent sequential Bug ID (e.g. BUG001, BUG002)
 const generateBugId = async () => {
@@ -127,6 +128,15 @@ exports.createBug = async (req, res) => {
                 entityId: bug._id,
             });
         }
+
+        await logAudit({
+            req,
+            module: "Bug",
+            action: "CREATE",
+            description: `Reported new bug "${bug.bugTitle}" (${bug.bugId || bug._id})`,
+            entityType: "Bug",
+            entityId: bug._id,
+        });
 
         return res.status(201).json({
             success: true,
@@ -360,6 +370,15 @@ exports.deleteBug = async (req, res) => {
 
         await Bug.findByIdAndDelete(req.params.bugId);
 
+        await logAudit({
+            req,
+            module: "Bug",
+            action: "DELETE",
+            description: `Deleted bug "${bug.bugTitle}" (${bug.bugId || bug._id})`,
+            entityType: "Bug",
+            entityId: bug._id,
+        });
+
         return res.status(200).json({
             success: true,
             message: "Bug deleted successfully",
@@ -494,6 +513,15 @@ exports.changeBugStatus = async (req, res) => {
                 entityId: bug._id,
             });
         }
+
+        await logAudit({
+            req,
+            module: "Bug",
+            action: "STATUS_CHANGE",
+            description: `Changed bug "${bug.bugTitle}" status to ${status}`,
+            entityType: "Bug",
+            entityId: bug._id,
+        });
 
         return res.status(200).json({
             success: true,

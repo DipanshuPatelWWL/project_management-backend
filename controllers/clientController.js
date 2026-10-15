@@ -155,10 +155,10 @@ exports.createClient = async (req, res) => {
 
 exports.getClient = async (req, res) => {
     try {
-        // Only active (non-deleted) clients are displayed
+        // Only active (non-deleted) clients are displayed, newest first
         const clients = await Client.find({
             isDeleted: false,
-        });
+        }).sort({ createdAt: -1 });
 
         // Preview of the next Client ID, without incrementing anything
         const nextClientId = await generateClientId();

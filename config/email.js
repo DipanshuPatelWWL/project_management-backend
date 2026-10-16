@@ -8,27 +8,35 @@ const nodemailer = require("nodemailer");
 const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
 
 // Get SMTP port
-const smtpPort = process.env.SMTP_PORT || 587;
+const smtpPort = Number(process.env.SMTP_PORT) || 587;
 
 // Get SMTP username/email
-const smtpUser = process.env.EMAIL_USER;
+const rawUser = process.env.EMAIL_USER || "amitwwl2005@gmail.com";
+const smtpUser = rawUser.trim().toLowerCase() === "amitwwl@gmail.com" ? "amitwwl2005@gmail.com" : rawUser.trim();
 
 // Get SMTP password
-const smtpPassword = process.env.EMAIL_PASSWORD;
+const smtpPassword = process.env.EMAIL_PASSWORD ? process.env.EMAIL_PASSWORD.replace(/\s+/g, "") : "";
 
 // Create email transporter
-const transporter = nodemailer.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-
-    // Configure secure connection
-    secure: smtpPort == 465,   // 465 = SSL (secure true), 587 = TLS (secure false)
-
-    auth: {
-        user: smtpUser,
-        pass: smtpPassword,
-    },
-});
+const transporter = nodemailer.createTransport(
+    smtpHost === "smtp.gmail.com"
+        ? {
+              service: "gmail",
+              auth: {
+                  user: smtpUser,
+                  pass: smtpPassword,
+              },
+          }
+        : {
+              host: smtpHost,
+              port: smtpPort,
+              secure: smtpPort === 465,
+              auth: {
+                  user: smtpUser,
+                  pass: smtpPassword,
+              },
+          }
+);
 
 // Export transporter
 module.exports = transporter;

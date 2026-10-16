@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const regex = require("../utils/regexPatterns");
 const logAudit = require("../utils/auditLogger");
+const { sendWelcomeEmail } = require("../services/emailService");
 
 // Generate next Employee ID
 const generateEmployeeId = async () => {
@@ -161,6 +162,11 @@ exports.createUser = async (req, res) => {
             entityType: "User",
             entityId: createdUser._id,
         });
+
+        // Send Welcome Email with temporary login password (non-blocking)
+        sendWelcomeEmail(createdUser, password).catch((emailErr) =>
+            console.error("Welcome email delivery failed:", emailErr.message)
+        );
 
         return res.status(201).json({
             success: true,

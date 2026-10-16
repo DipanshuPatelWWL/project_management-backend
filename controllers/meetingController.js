@@ -1,5 +1,5 @@
 const Meeting = require("../models/Meeting");
-const sendMeetingInvitationEmail = require("../services/emailService");
+const { sendMeetingInvitationEmail } = require("../services/emailService");
 const { sendNotification } = require("../services/notificationService");
 
 // Generate permanent sequential Meeting ID (e.g. MTG001, MTG002)
@@ -156,6 +156,16 @@ exports.createMeeting = async (req, res) => {
                 entityType: "Meeting",
                 entityId: meeting._id,
             });
+
+            // Send Meeting Invitation Email (non-blocking)
+            sendMeetingInvitationEmail(participantIdStr, {
+                title: meeting.meetingTitle,
+                date: meeting.meetingDate,
+                time: `${meeting.startTime || ""} - ${meeting.endTime || ""}`,
+                locationOrLink: meeting.meetingLink,
+            }).catch((emailErr) =>
+                console.error("Meeting invite email delivery failed:", emailErr.message)
+            );
         }
 
         // 2. Notify the scheduler/creator so they get real-time confirmation & popup
@@ -197,14 +207,14 @@ exports.getMeetings = async (req, res) => {
             .populate("participants", "firstName lastName email employeeId")
             .populate("organizer", "firstName lastName email employeeId")
             .populate("createdBy", "firstName lastName email")
-            .sort({ createdAt: -1 }); 
+            .sort({ createdAt: -1 });
 
         // Auto backfill meetingId for existing meetings if missing
         for (let i = 0; i < meetings.length; i++) {
             if (!meetings[i].meetingId) {
                 const autoId = `MTG${String(i + 1).padStart(3, "0")}`;
                 meetings[i].meetingId = autoId;
-                Meeting.updateOne({ _id: meetings[i]._id }, { meetingId: autoId }).exec().catch(() => {});
+                Meeting.updateOne({ _id: meetings[i]._id }, { meetingId: autoId }).exec().catch(() => { });
             }
         }
 

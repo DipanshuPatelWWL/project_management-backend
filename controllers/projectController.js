@@ -365,8 +365,14 @@ exports.updateProject = async (req, res) => {
         if (technologies !== undefined) project.technologies = technologies;
         if (startDate !== undefined) project.startDate = startDate || null;
         if (endDate !== undefined) project.endDate = endDate || null;
-        if (deadline !== undefined) project.deadline = deadline || null;
-        if (status) project.status = status;
+        let statusChanged = false;
+        const oldProjectStatus = project.status;
+        if (status) {
+            if (status !== oldProjectStatus) {
+                statusChanged = true;
+            }
+            project.status = status;
+        }
         if (priority) project.priority = priority;
         if (progress !== undefined) project.progress = progress;
         if (isArchived !== undefined) {
@@ -379,6 +385,26 @@ exports.updateProject = async (req, res) => {
         project.updatedBy = req.user._id;
 
         await project.save({ validateModifiedOnly: true });
+
+        if (statusChanged) {
+            await logAudit({
+                req,
+                module: "Project",
+                action: "STATUS_CHANGE",
+                description: `Changed project "${project.projectName}" status from "${oldProjectStatus}" to "${status}"`,
+                entityType: "Project",
+                entityId: project._id,
+            });
+        } else {
+            await logAudit({
+                req,
+                module: "Project",
+                action: "UPDATE",
+                description: `Updated project "${project.projectName}" (${project.projectId || project._id})`,
+                entityType: "Project",
+                entityId: project._id,
+            });
+        }
 
         return res.status(200).json({
             success: true,

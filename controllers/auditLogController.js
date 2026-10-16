@@ -15,7 +15,7 @@ exports.getAuditLogs = async (req, res) => {
             endDate,
         } = req.query;
     
-        const filter = {};
+        const conditions = [];
 
         if (search && search.trim()) {
             const searchRegex = new RegExp(search.trim(), "i");
@@ -29,42 +29,46 @@ exports.getAuditLogs = async (req, res) => {
             }).select("_id");
             const matchedUserIds = matchedUsers.map((u) => u._id);
 
-            filter.$or = [
-                { description: searchRegex },
-                { module: searchRegex },
-                { action: searchRegex },
-                { ipAddress: searchRegex },
-                { browser: searchRegex },
-                ...(matchedUserIds.length ? [{ user: { $in: matchedUserIds } }] : []),
-            ];
+            conditions.push({
+                $or: [
+                    { description: searchRegex },
+                    { module: searchRegex },
+                    { action: searchRegex },
+                    { ipAddress: searchRegex },
+                    { browser: searchRegex },
+                    ...(matchedUserIds.length ? [{ user: { $in: matchedUserIds } }] : []),
+                ],
+            });
         }
     
         if (action) {
-            filter.action = action;
+            conditions.push({ action });
         }
         if (user) {
-            filter.user = user;
+            conditions.push({ user });
         }
         if (entityType) {
-            filter.entityType = entityType;
+            conditions.push({
+                $or: [{ entityType: entityType }, { module: entityType }],
+            });
         }
         if (entityId) {
-            filter.entityId = entityId;
+            conditions.push({ entityId });
         }
         if (startDate || endDate) {
-            filter.createdAt = {};
-
+            const dateFilter = {};
             if (startDate) {
-                filter.createdAt.$gte = new Date(startDate);
+                dateFilter.$gte = new Date(startDate);
             }
-
             if (endDate) {
                 const end = new Date(endDate);
                 end.setHours(23, 59, 59, 999);
-
-                filter.createdAt.$lte = end;
+                dateFilter.$lte = end;
             }
+            conditions.push({ createdAt: dateFilter });
         }
+
+        const filter = conditions.length > 0 ? { $and: conditions } : {};
 
         const skip = (Number(page) - 1) * Number(limit);
 

@@ -8,11 +8,13 @@ const timeLogSchema = new mongoose.Schema({
         uppercase: true,
         trim: true,
     },
+
     project: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Project",
         trim: true,
     },
+
     sprint: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Sprint",
@@ -23,27 +25,33 @@ const timeLogSchema = new mongoose.Schema({
         ref: "Task",
         trim: true,
     },
+
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
         trim: true,
     },
+
     workDate: {
         type: Date,
         trim: true,
     },
+
     hoursWorked: {
         type: Number,
         trim: true,
     },
+
     Description: {
         type: String,
         trim: true,
     },
+
     description: {
         type: String,
         trim: true,
     },
+
     status: {
         type: String,
         enum: ["Logged", "Approved", "Pending", "Rejected"],

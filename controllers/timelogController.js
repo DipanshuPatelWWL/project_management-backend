@@ -1,6 +1,6 @@
-
 const mongoose = require("mongoose");
 const TimeLog = require("../models/TimeLog");
+const logAudit = require("../utils/auditLogger");
 
 // Generate sequential TimeLog ID (e.g. TL001, TL002)
 const generateTimeLogId = async () => {
@@ -125,6 +125,15 @@ exports.createTimeLog = async (req, res) => {
             status: status || "Logged",
         });
 
+        await logAudit({
+            req,
+            module: "TimeLog",
+            action: "CREATE",
+            description: `Created time log entry (${timeLog.timeLogId}) for ${timeLog.hoursWorked} hrs`,
+            entityType: "TimeLog",
+            entityId: timeLog._id,
+        });
+
         return res.status(201).json({
             success: true,
             message: "Time log created successfully",
@@ -246,9 +255,36 @@ exports.updateTimeLog = async (req, res) => {
             timeLog.description = desc;
             timeLog.Description = desc;
         }
-        if (status) timeLog.status = status;
+        let statusChanged = false;
+        const oldTimeLogStatus = timeLog.status;
+        if (status) {
+            if (status !== oldTimeLogStatus) {
+                statusChanged = true;
+            }
+            timeLog.status = status;
+        }
 
         await timeLog.save();
+
+        if (statusChanged) {
+            await logAudit({
+                req,
+                module: "TimeLog",
+                action: "STATUS_CHANGE",
+                description: `Changed time log (${timeLog.timeLogId}) status from "${oldTimeLogStatus}" to "${status}"`,
+                entityType: "TimeLog",
+                entityId: timeLog._id,
+            });
+        } else {
+            await logAudit({
+                req,
+                module: "TimeLog",
+                action: "UPDATE",
+                description: `Updated time log entry (${timeLog.timeLogId})`,
+                entityType: "TimeLog",
+                entityId: timeLog._id,
+            });
+        }
 
         return res.status(200).json({
             success: true,
@@ -285,6 +321,15 @@ exports.deleteTimeLog = async (req, res) => {
         }
 
         await TimeLog.findByIdAndDelete(timeLog._id);
+
+        await logAudit({
+            req,
+            module: "TimeLog",
+            action: "DELETE",
+            description: `Deleted time log entry (${timeLog.timeLogId || timeLog._id})`,
+            entityType: "TimeLog",
+            entityId: timeLog._id,
+        });
 
         return res.status(200).json({
             success: true,

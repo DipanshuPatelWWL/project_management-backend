@@ -273,8 +273,12 @@ exports.updateTask = async (req, res) => {
             }
             task.assignedTo = assignedTo;
         }
-        if (priority !== undefined) task.priority = priority;
+        let statusChanged = false;
+        const oldTaskStatus = task.status;
         if (status !== undefined) {
+            if (status !== oldTaskStatus) {
+                statusChanged = true;
+            }
             task.status = status;
             if (status === "completed" && !task.compltedDate) {
                 task.compltedDate = new Date();
@@ -313,6 +317,26 @@ exports.updateTask = async (req, res) => {
         task.updatedBy = req.user?._id;
 
         await task.save();
+
+        if (statusChanged) {
+            await logAudit({
+                req,
+                module: "Task",
+                action: "STATUS_CHANGE",
+                description: `Changed task "${task.taskTitle}" status from "${oldTaskStatus}" to "${status}"`,
+                entityType: "Task",
+                entityId: task._id,
+            });
+        } else {
+            await logAudit({
+                req,
+                module: "Task",
+                action: "UPDATE",
+                description: `Updated task "${task.taskTitle}" (${task.taskId || task._id})`,
+                entityType: "Task",
+                entityId: task._id,
+            });
+        }
 
         if (
             task.assignedTo &&

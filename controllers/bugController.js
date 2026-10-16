@@ -278,8 +278,12 @@ exports.updateBug = async (req, res) => {
         if (assignedTo !== undefined) bug.assignedTo = assignedTo;
         if (reportedBy !== undefined) bug.reportedBy = reportedBy;
         if (severity !== undefined) bug.severity = severity;
-        if (priority !== undefined) bug.priority = priority;
+        let statusChanged = false;
+        const oldBugStatus = bug.status;
         if (status !== undefined) {
+            if (status !== oldBugStatus) {
+                statusChanged = true;
+            }
             bug.status = status;
             if (status === "resolved") {
                 bug.resolvedDate = new Date();
@@ -307,6 +311,26 @@ exports.updateBug = async (req, res) => {
         bug.updatedBy = req.user?._id;
 
         await bug.save();
+
+        if (statusChanged) {
+            await logAudit({
+                req,
+                module: "Bug",
+                action: "STATUS_CHANGE",
+                description: `Changed bug "${bug.bugTitle}" status from "${oldBugStatus}" to "${status}"`,
+                entityType: "Bug",
+                entityId: bug._id,
+            });
+        } else {
+            await logAudit({
+                req,
+                module: "Bug",
+                action: "UPDATE",
+                description: `Updated bug "${bug.bugTitle}" (${bug.bugId || bug._id})`,
+                entityType: "Bug",
+                entityId: bug._id,
+            });
+        }
 
         const updatedBug = await Bug.findById(bug._id)
             .populate("project", "projectName")

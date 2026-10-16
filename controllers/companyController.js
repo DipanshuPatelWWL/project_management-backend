@@ -1,5 +1,6 @@
 const Company = require("../models/Company");
 const regex = require("../utils/regexPatterns");
+const logAudit = require("../utils/auditLogger");
 
 // Generate permanent sequential Company ID
 // Soft-deleted companies are also included so IDs are never reused
@@ -171,6 +172,15 @@ exports.createCompany = async (req, res) => {
 
       createdBy: req.user._id,
       updatedBy: req.user._id,
+    });
+
+    await logAudit({
+      req,
+      module: "Company",
+      action: "CREATE",
+      description: `Created new company "${company.companyName}" (${company.companyId})`,
+      entityType: "Company",
+      entityId: company._id,
     });
 
     return res.status(201).json({
@@ -425,13 +435,38 @@ exports.updateCompany = async (req, res) => {
       company.officeEndTime = officeEndTime;
     }
 
+    let statusChanged = false;
+    const oldCompanyStatus = company.status;
     if (status !== undefined) {
+      if (status !== oldCompanyStatus) {
+        statusChanged = true;
+      }
       company.status = status;
     }
 
     company.updatedBy = req.user._id;
 
     await company.save();
+
+    if (statusChanged) {
+      await logAudit({
+        req,
+        module: "Company",
+        action: "STATUS_CHANGE",
+        description: `Changed company "${company.companyName}" status from "${oldCompanyStatus}" to "${status}"`,
+        entityType: "Company",
+        entityId: company._id,
+      });
+    } else {
+      await logAudit({
+        req,
+        module: "Company",
+        action: "UPDATE",
+        description: `Updated details for company "${company.companyName}" (${company.companyId})`,
+        entityType: "Company",
+        entityId: company._id,
+      });
+    }
 
     return res.status(200).json({
       success: true,
@@ -467,6 +502,15 @@ exports.deleteCompany = async (req, res) => {
     company.updatedBy = req.user._id;
 
     await company.save();
+
+    await logAudit({
+      req,
+      module: "Company",
+      action: "DELETE",
+      description: `Deleted company "${company.companyName}" (${company.companyId})`,
+      entityType: "Company",
+      entityId: company._id,
+    });
 
     return res.status(200).json({
       success: true,

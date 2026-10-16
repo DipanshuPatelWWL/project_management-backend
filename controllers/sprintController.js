@@ -1,4 +1,5 @@
 const Sprint = require("../models/Sprint");
+const logAudit = require("../utils/auditLogger");
 
 // Generate permanent sequential Sprint ID (same as generateProjectId / generateClientId)
 const generateSprintId = async () => {
@@ -103,6 +104,15 @@ exports.createSprint = async (req, res) => {
             .populate("project", "projectName projectId status")
             .populate("createdBy", "firstName lastName email")
             .populate("updatedBy", "firstName lastName email");
+
+        await logAudit({
+            req,
+            module: "Sprint",
+            action: "CREATE",
+            description: `Created new sprint "${sprint.sprintName}" (${sprint.sprintId})`,
+            entityType: "Sprint",
+            entityId: sprint._id,
+        });
 
         return res.status(201).json({
             success: true,
@@ -258,7 +268,14 @@ exports.updateSprint = async (req, res) => {
         if (project !== undefined) sprint.project = project;
         sprint.startDate = startDate;
         sprint.endDate = endDate;
-        if (status !== undefined) sprint.status = status;
+        let statusChanged = false;
+        const oldSprintStatus = sprint.status;
+        if (status !== undefined) {
+            if (status !== oldSprintStatus) {
+                statusChanged = true;
+            }
+            sprint.status = status;
+        }
         if (progress !== undefined) sprint.progress = Number(progress) || 0;
         if (totalTasks !== undefined) sprint.totalTasks = Number(totalTasks) || 0;
         if (completedTasks !== undefined) sprint.completedTasks = Number(completedTasks) || 0;
@@ -268,6 +285,26 @@ exports.updateSprint = async (req, res) => {
         sprint.updatedBy = req.user._id;
 
         await sprint.save();
+
+        if (statusChanged) {
+            await logAudit({
+                req,
+                module: "Sprint",
+                action: "STATUS_CHANGE",
+                description: `Changed sprint "${sprint.sprintName}" status from "${oldSprintStatus}" to "${status}"`,
+                entityType: "Sprint",
+                entityId: sprint._id,
+            });
+        } else {
+            await logAudit({
+                req,
+                module: "Sprint",
+                action: "UPDATE",
+                description: `Updated details for sprint "${sprint.sprintName}" (${sprint.sprintId})`,
+                entityType: "Sprint",
+                entityId: sprint._id,
+            });
+        }
 
         const populatedSprint = await Sprint.findById(sprint._id)
             .populate("project", "projectName projectId status")
@@ -311,6 +348,15 @@ exports.deleteSprint = async (req, res) => {
 
         await sprint.save({ validateModifiedOnly: true });
 
+        await logAudit({
+            req,
+            module: "Sprint",
+            action: "DELETE",
+            description: `Deleted sprint "${sprint.sprintName}" (${sprint.sprintId})`,
+            entityType: "Sprint",
+            entityId: sprint._id,
+        });
+
         return res.status(200).json({
             success: true,
             message: "Sprint deleted successfully",
@@ -345,6 +391,15 @@ exports.startSprint = async (req, res) => {
         sprint.updatedBy = req.user._id;
 
         await sprint.save();
+
+        await logAudit({
+            req,
+            module: "Sprint",
+            action: "STATUS_CHANGE",
+            description: `Started sprint "${sprint.sprintName}" (status set to active)`,
+            entityType: "Sprint",
+            entityId: sprint._id,
+        });
 
         const populatedSprint = await Sprint.findById(sprint._id)
             .populate("project", "projectName projectId status")
@@ -386,7 +441,16 @@ exports.completeSprint = async (req, res) => {
         sprint.progress = 100;
         sprint.updatedBy = req.user._id;
 
-        await sprint.save(); 
+        await sprint.save();
+
+        await logAudit({
+            req,
+            module: "Sprint",
+            action: "STATUS_CHANGE",
+            description: `Completed sprint "${sprint.sprintName}" (status set to completed)`,
+            entityType: "Sprint",
+            entityId: sprint._id,
+        }); 
 
         const populatedSprint = await Sprint.findById(sprint._id)
             .populate("project", "projectName projectId status")

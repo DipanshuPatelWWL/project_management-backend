@@ -1,5 +1,6 @@
 
 const Document = require("../models/Document");
+const logAudit = require("../utils/auditLogger");
 
 // Generate permanent sequential Document ID (e.g. DOC001, DOC002)
 const generateDocumentId = async () => {
@@ -89,6 +90,15 @@ exports.createDocument = async(req,res) => {
             uploadedBy : req.user._id,
             createdBy : req.user._id,
             updatedBy : req.user._id,
+        });
+
+        await logAudit({
+            req,
+            module: "Document",
+            action: "CREATE",
+            description: `Uploaded new document "${document.documentName}" (${document.documentId})`,
+            entityType: "Document",
+            entityId: document._id,
         });
 
         return res.status(201).json({
@@ -227,6 +237,15 @@ exports.updateDocument = async(req,res) => {
 
         await document.save();
 
+        await logAudit({
+            req,
+            module: "Document",
+            action: "UPDATE",
+            description: `Updated document "${document.documentName}" (${document.documentId || document._id})`,
+            entityType: "Document",
+            entityId: document._id,
+        });
+
         return res.status(200).json({
             success: true,
             message: "document updated successfully",
@@ -258,6 +277,15 @@ exports.deleteDocument = async(req,res) => {
         }
 
         await Document.findByIdAndDelete(req.params.documentId);
+
+        await logAudit({
+            req,
+            module: "Document",
+            action: "DELETE",
+            description: `Deleted document "${document.documentName}" (${document.documentId || document._id})`,
+            entityType: "Document",
+            entityId: document._id,
+        });
 
         return res.status(200).json({
             success: true,

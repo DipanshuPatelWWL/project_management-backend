@@ -345,7 +345,10 @@ exports.updateUser = async (req, res) => {
             user.lastName = lastName;
         }
 
-        if (role) {
+        let roleChanged = false;
+        const oldUserRole = user.role;
+        if (role && role !== oldUserRole) {
+            roleChanged = true;
             user.role = role;
         }
 
@@ -361,6 +364,8 @@ exports.updateUser = async (req, res) => {
             user.department = department;
         }
 
+        let statusChanged = false;
+        const oldUserStatus = user.status;
         if (status && status !== user.status) {
             if (req.user.role !== "SuperAdmin") {
                 return res.status(403).json({
@@ -374,6 +379,7 @@ exports.updateUser = async (req, res) => {
                     message: "Invalid status value",
                 });
             }
+            statusChanged = true;
             user.status = status;
         }
 
@@ -409,6 +415,39 @@ exports.updateUser = async (req, res) => {
         user.updatedBy = req.user._id;
 
         await user.save();
+
+        if (roleChanged) {
+            await logAudit({
+                req,
+                module: "User",
+                action: "ROLE_CHANGE",
+                description: `Changed role of user ${user.firstName} ${user.lastName} from "${oldUserRole}" to "${user.role}"`,
+                entityType: "User",
+                entityId: user._id,
+            });
+        }
+
+        if (statusChanged) {
+            await logAudit({
+                req,
+                module: "User",
+                action: "STATUS_CHANGE",
+                description: `Changed status of user ${user.firstName} ${user.lastName} from "${oldUserStatus}" to "${user.status}"`,
+                entityType: "User",
+                entityId: user._id,
+            });
+        }
+
+        if (!roleChanged && !statusChanged) {
+            await logAudit({
+                req,
+                module: "User",
+                action: "UPDATE",
+                description: `Updated profile details for user ${user.firstName} ${user.lastName} (${user.email})`,
+                entityType: "User",
+                entityId: user._id,
+            });
+        }
 
         user.password = undefined;
 

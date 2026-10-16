@@ -1,6 +1,7 @@
 const Meeting = require("../models/Meeting");
 const { sendMeetingInvitationEmail } = require("../services/emailService");
 const { sendNotification } = require("../services/notificationService");
+const logAudit = require("../utils/auditLogger");
 
 // Generate permanent sequential Meeting ID (e.g. MTG001, MTG002)
 const generateMeetingId = async () => {
@@ -182,6 +183,15 @@ exports.createMeeting = async (req, res) => {
             });
         }
 
+        await logAudit({
+            req,
+            module: "Meeting",
+            action: "CREATE",
+            description: `Scheduled new meeting "${meeting.meetingTitle}" (${meeting.meetingId})`,
+            entityType: "Meeting",
+            entityId: meeting._id,
+        });
+
         return res.status(201).json({
             success: true,
             message: "Meeting created successfully",
@@ -362,11 +372,38 @@ exports.updateMeeting = async (req, res) => {
         if (meetingType !== undefined) meeting.meetingType = meetingType;
         if (meetingLink !== undefined) meeting.meetingLink = meetingLink;
         if (meetingNotes !== undefined) meeting.meetingNotes = meetingNotes;
-        if (status !== undefined) meeting.status = status;
+        let statusChanged = false;
+        const oldMeetingStatus = meeting.status;
+        if (status !== undefined) {
+            if (status !== oldMeetingStatus) {
+                statusChanged = true;
+            }
+            meeting.status = status;
+        }
 
         meeting.updatedBy = req.user._id;
 
         await meeting.save();
+
+        if (statusChanged) {
+            await logAudit({
+                req,
+                module: "Meeting",
+                action: "STATUS_CHANGE",
+                description: `Changed meeting "${meeting.meetingTitle}" status from "${oldMeetingStatus}" to "${status}"`,
+                entityType: "Meeting",
+                entityId: meeting._id,
+            });
+        } else {
+            await logAudit({
+                req,
+                module: "Meeting",
+                action: "UPDATE",
+                description: `Updated meeting "${meeting.meetingTitle}" (${meeting.meetingId})`,
+                entityType: "Meeting",
+                entityId: meeting._id,
+            });
+        }
 
         const updateTargets = getMeetingTargetUserIds(meeting);
         if (req.user?._id && !updateTargets.includes(req.user._id.toString())) {
@@ -428,6 +465,15 @@ exports.deleteMeeting = async (req, res) => {
         }
 
         await Meeting.findByIdAndDelete(req.params.meetingId);
+
+        await logAudit({
+            req,
+            module: "Meeting",
+            action: "DELETE",
+            description: `Cancelled and deleted meeting "${meeting.meetingTitle}" (${meeting.meetingId || meeting._id})`,
+            entityType: "Meeting",
+            entityId: meeting._id,
+        });
 
         return res.status(200).json({
             success: true,
@@ -497,6 +543,15 @@ exports.changeMeetingStatus = async (req, res) => {
         meeting.updatedBy = req.user._id;
 
         await meeting.save();
+
+        await logAudit({
+            req,
+            module: "Meeting",
+            action: "STATUS_CHANGE",
+            description: `Changed meeting "${meeting.meetingTitle}" status to ${status}`,
+            entityType: "Meeting",
+            entityId: meeting._id,
+        });
 
         const statusTargets = getMeetingTargetUserIds(meeting);
         if (req.user?._id && !statusTargets.includes(req.user._id.toString())) {

@@ -1,5 +1,6 @@
 const Client = require("../models/Client");
 const regex = require("../utils/regexPatterns");
+const logAudit = require("../utils/auditLogger");
 
 // Generate permanent sequential Client ID.
 // Soft-deleted clients are included in the scan so IDs are never reused -
@@ -136,6 +137,15 @@ exports.createClient = async (req, res) => {
             isDeleted: false,
             createdBy: req.user._id,
             updatedBy: req.user._id,
+        });
+
+        await logAudit({
+            req,
+            module: "Client",
+            action: "CREATE",
+            description: `Created new client "${client.ClientName}" (${client.clientId})`,
+            entityType: "Client",
+            entityId: client._id,
         });
 
         return res.status(201).json({
@@ -308,11 +318,38 @@ exports.updateClient = async (req, res) => {
         if (country) client.country = country;
         if (city) client.city = city;
         if (state) client.state = state;
-        if (status) client.status = status;
+        let statusChanged = false;
+        const oldClientStatus = client.status;
+        if (status) {
+            if (status !== oldClientStatus) {
+                statusChanged = true;
+            }
+            client.status = status;
+        }
 
         client.updatedBy = req.user._id;
 
         await client.save({ validateModifiedOnly: true });
+
+        if (statusChanged) {
+            await logAudit({
+                req,
+                module: "Client",
+                action: "STATUS_CHANGE",
+                description: `Changed client "${client.ClientName}" status from "${oldClientStatus}" to "${status}"`,
+                entityType: "Client",
+                entityId: client._id,
+            });
+        } else {
+            await logAudit({
+                req,
+                module: "Client",
+                action: "UPDATE",
+                description: `Updated details for client "${client.ClientName}" (${client.clientId})`,
+                entityType: "Client",
+                entityId: client._id,
+            });
+        }
 
         return res.status(200).json({
             success: true,
@@ -348,6 +385,15 @@ exports.deleteClient = async (req, res) => {
         client.updatedBy = req.user._id;
 
         await client.save({ validateModifiedOnly: true });
+
+        await logAudit({
+            req,
+            module: "Client",
+            action: "DELETE",
+            description: `Deleted client "${client.ClientName}" (${client.clientId})`,
+            entityType: "Client",
+            entityId: client._id,
+        });
 
         return res.status(200).json({
             success: true,
